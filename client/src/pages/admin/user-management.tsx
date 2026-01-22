@@ -38,7 +38,7 @@ import { Users, UserPlus, Pencil, Trash2, ShieldCheck, ShieldOff, LogOut, Activi
 import type { UserWithoutPassword } from "@shared/schema";
 import { useLocation, Link } from "wouter";
 import { UserMenu } from "../../components/user-menu";
-//import logoPath from "@/src/assets/react.svg";
+import logoPath from "../../assets/san_agustin.jpg";
 
 const roles = [
   { value: "superadmin", label: "Super Admin" },
@@ -93,7 +93,7 @@ function AdminLayout({ children }: AdminLayoutProps) {
         <div className="p-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center gap-3 mb-3">
             <img 
-              //src={logoPath} 
+              src={logoPath} 
               alt="Barangay San Agustin Logo" 
               className="h-12 w-12 rounded-full object-cover"
             />

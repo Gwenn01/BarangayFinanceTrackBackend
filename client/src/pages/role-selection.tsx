@@ -9,7 +9,7 @@ import {
   Eye,
   Shield
 } from "lucide-react";
-//import logoPath from "@assets/570006557_1804615333498831_8118356708932147603_n_1762095297397.jpg";
+import logoPath from "../assets/san_agustin.jpg";
 //import barangayHallPath from "@assets/IMG_20251102_172947_819_1762095297396.jpg";
 
 const roles = [
@@ -111,7 +111,7 @@ export default function RoleSelection() {
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img 
-                //src={logoPath} 
+                src={logoPath} 
                 alt="Barangay San Agustin Logo" 
                 className="h-20 w-20 rounded-full object-cover ring-4 ring-white/20"
               />

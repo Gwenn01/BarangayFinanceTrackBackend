@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { revenues, expenses, fundOperations, budgetAllocations } from "@shared/schema";
+import { revenues, expenses, fundOperations, budgetAllocations } from "../../shared/schema";
 
 async function seed() {
   console.log("Seeding database...");

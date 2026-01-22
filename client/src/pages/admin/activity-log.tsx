@@ -16,7 +16,7 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Users, Activity, LogOut, ArrowLeft } from "lucide-react";
 import { UserMenu } from "../../components/user-menu";
-//import logoPath from "@/src/assets/react.svg";
+import logoPath from "../../assets/san_agustin.jpg";
 import type { ActivityLog } from "server/storage";
 
 interface AdminLayoutProps {
@@ -50,7 +50,7 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         <div className="p-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center gap-3 mb-3">
             <img 
-              //src={logoPath} 
+              src={logoPath} 
               alt="Barangay San Agustin Logo" 
               className="h-12 w-12 rounded-full object-cover"
             />

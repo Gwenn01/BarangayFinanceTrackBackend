@@ -2,7 +2,7 @@ import { useLocation, Link } from "wouter";
 import { TrendingUp, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { UserMenu } from "../components/user-menu";
-//import logoPath from "@assets/570006557_1804615333498831_8118356708932147603_n_1762095297397.jpg";
+import logoPath from "../assets/san_agustin.jpg";
 import { apiRequest, queryClient } from "../lib/queryClient";
 
 const reviewerModules = [
@@ -47,7 +47,7 @@ export function ReviewerLayout({ children }: ReviewerLayoutProps) {
         <div className="p-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center gap-3 mb-3">
             <img 
-              //src={logoPath} 
+              src={logoPath} 
               alt="Barangay San Agustin Logo" 
               className="h-12 w-12 rounded-full object-cover"
             />

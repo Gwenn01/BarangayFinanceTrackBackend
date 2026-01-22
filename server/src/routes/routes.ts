@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertRevenueSchema, insertExpenseSchema, insertFundOperationSchema, insertBudgetAllocationSchema, insertBudgetEntrySchema, insertCollectionSchema, insertDisbursementSchema, insertDfurProjectSchema, insertUserSchema, insertViewerCommentSchema } from "@shared/schema";
-import { hashPassword, comparePassword, sanitizeUser, isAdmin } from "./auth";
+import { storage } from "../storage";
+import { insertRevenueSchema, insertExpenseSchema, insertFundOperationSchema, insertBudgetAllocationSchema, insertBudgetEntrySchema, insertCollectionSchema, insertDisbursementSchema, insertDfurProjectSchema, insertUserSchema, insertViewerCommentSchema } from "../../../shared/schema";
+import { hashPassword, comparePassword, sanitizeUser, isAdmin } from "../../auth";
 import { z } from "zod";
 
 // Login schema

@@ -19,7 +19,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "../components/ui/sidebar";
-//import logoPath from "@assets/570006557_1804615333498831_8118356708932147603_n_1762095297397.jpg";
+import logoPath from "../assets/san_agustin.jpg";
 
 const menuItems = [
   {
@@ -62,7 +62,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-6">
         <div className="flex items-center gap-3">
           <img 
-            //src={logoPath} 
+            src={logoPath} 
             alt="Barangay San Agustin Logo" 
             className="h-14 w-14 rounded-full object-cover"
           />

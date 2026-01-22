@@ -3,7 +3,7 @@ import { FileText, Home, Eye, LogOut, Shield, ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { UserMenu } from "../components/user-menu";
 import { useAuth } from "../contexts/auth-context";
-//import logoPath from "@assets/570006557_1804615333498831_8118356708932147603_n_1762095297397.jpg";
+import logoPath from "../assets/san_agustin.jpg";
 import { apiRequest, queryClient } from "../lib/queryClient";
 
 interface ViewerLayoutProps {
@@ -37,7 +37,7 @@ export function ViewerLayout({ children }: ViewerLayoutProps) {
         <div className="p-6 border-b border-border sticky top-0 z-10 bg-card">
           <div className="flex items-center gap-3 mb-3">
             <img 
-              //src={logoPath} 
+              src={logoPath} 
               alt="Barangay San Agustin Logo" 
               className="h-12 w-12 rounded-full object-cover"
             />

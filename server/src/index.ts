@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import type { UserWithoutPassword } from "@shared/schema";
+import { registerRoutes } from "./routes/routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
+import type { UserWithoutPassword } from "../../shared/schema.js";
 
 const app = express();
+
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
 // Session type declaration
 declare module 'express-session' {

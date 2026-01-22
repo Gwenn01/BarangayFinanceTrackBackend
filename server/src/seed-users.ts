@@ -1,6 +1,6 @@
 import { storage } from "./storage";
-import { hashPassword } from "./auth";
-import type { InsertUser } from "@shared/schema";
+import { hashPassword } from "../auth";
+import type { InsertUser } from "../../shared/schema";
 
 async function seedUsers() {
   console.log("🌱 Seeding initial users...");

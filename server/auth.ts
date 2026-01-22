@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import type { User, UserWithoutPassword } from "@shared/schema";
+import type { User, UserWithoutPassword } from "../shared/schema";
 
 const SALT_ROUNDS = 10;
 

@@ -33,8 +33,8 @@ import {
   dfurProjects,
   users,
   viewerComments,
-} from "@shared/schema";
-import { type CapitalOutlaySummary } from "@shared/abr";
+} from "../../shared/schema";
+import { type CapitalOutlaySummary } from "../../shared/abr";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, like } from "drizzle-orm";
 

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
-//import logoPath from "@assets/570006557_1804615333498831_8118356708932147603_n_1762095297397.jpg";
+import logoPath from "../assets/san_agustin.jpg";
 import { LogIn, ArrowLeft } from "lucide-react";
 import type { UserWithoutPassword } from "../../../shared/schema";
 
@@ -77,7 +77,7 @@ export default function Login() {
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
             <img 
-              //src={logoPath} 
+              src={logoPath} 
               alt="Barangay San Agustin Logo" 
               className="h-20 w-20 rounded-full object-cover"
             />
