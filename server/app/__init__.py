@@ -1,9 +1,11 @@
 from flask import Flask
 from flask_cors import CORS
 from app.config import Config
-from app.extensions import jwt   # 👈 FIXED import
+from app.extensions import jwt   #
+from dotenv import load_dotenv 
 
 def create_app():
+    load_dotenv()
     app = Flask(__name__)
     app.config.from_object(Config)
 
@@ -11,7 +13,6 @@ def create_app():
 
     # Initialize extensions
     jwt.init_app(app)
-
     # Register blueprints
     #TEST
     from app.routes.db_test_routes import db_test_bp
