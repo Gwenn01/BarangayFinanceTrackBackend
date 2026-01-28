@@ -68,3 +68,32 @@ def update_user_password(user_id, password):
     except Exception as e:
         print(f"Error updating user password: {e}")
         return False
+
+def delete_user(user_id):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            UPDATE users
+            SET is_active = FALSE
+            WHERE id = %s
+        """
+
+        cursor.execute(
+            query,
+            (user_id,)
+        )
+
+        connection.commit()
+
+        success = cursor.rowcount == 1
+
+        cursor.close()
+        connection.close()
+
+        return success
+
+    except Exception as e:
+        print(f"Error deleting user: {e}")
+        return False

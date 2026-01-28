@@ -206,3 +206,9 @@ VALUES
 DELETE FROM users
 where id > 0;
 ALTER TABLE users AUTO_INCREMENT = 1;
+
+UPDATE users SET is_active = 1 WHERE id = 3;
+UPDATE users SET is_active = 1 WHERE id = 4;
+UPDATE users SET is_active = 1 WHERE id = 5;
+UPDATE users SET is_active = 1 WHERE id = 6;
+

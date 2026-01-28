@@ -28,6 +28,6 @@ def add_user():
 def edit_user():
     return edit_user_controller()
 
-@admin_bp.route("delete-user", methods=["DELETE"])
+@admin_bp.route("delete-user", methods=["PUT"])
 def delete_user():
     return delete_user_controller()

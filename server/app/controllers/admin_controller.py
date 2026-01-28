@@ -2,7 +2,7 @@ from flask import jsonify, request
 from app.utils.hash_password import hash_password
 from app.model.admin.get_all_users_db import get_all_users
 from app.model.admin.insert_user_db import insert_user
-from app.model.admin.put_user_db import update_user, update_user_password
+from app.model.admin.put_user_db import update_user, update_user_password, delete_user
 from app.middleware.validate_user import (
     validate_user,
     validate_put_user                      
@@ -78,6 +78,15 @@ def edit_user_controller():
 def delete_user_controller():
     try:
         ...
-        return jsonify({"message": "User deleted successfully"}), 200
+        user_id = request.get_json()["user_id"]
+        if not user_id:
+            return jsonify({"error": "User id is required"}), 400
+
+        success = delete_user(user_id)
+
+        if success:
+            return jsonify({"message": "User deleted successfully"}), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 404
