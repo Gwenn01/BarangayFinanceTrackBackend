@@ -18,8 +18,19 @@ def create_app():
     from app.routes.db_test_routes import db_test_bp
     from app.routes.tests_routes import test_bp
     from app.routes.auth_routes import auth_bp
+    #GENERAL 
+    from app.routes.general_routes import general_bp
+    #ADMIN
+    from app.routes.admin_routes import admin_bp
+    
+    #====================================================================================
+    #TEST
     app.register_blueprint(db_test_bp, url_prefix="/api")
     app.register_blueprint(test_bp, url_prefix="/api")
     app.register_blueprint(auth_bp, url_prefix="/api")
+    #GENERAL
+    app.register_blueprint(general_bp, url_prefix="/api")
+    #ADMIN
+    app.register_blueprint(admin_bp, url_prefix="/api")
 
     return app

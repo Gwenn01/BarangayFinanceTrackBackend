@@ -10,4 +10,5 @@ python-dotenv==1.2.1
 Werkzeug==3.1.5
 flask-jwt-extended
 mysql-connector-python
+bcrypt
 
