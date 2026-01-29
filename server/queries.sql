@@ -190,7 +190,27 @@ CREATE TABLE viewer_comments (
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+ALTER TABLE collections
+ADD created_by INT NOT NULL,
+ADD CONSTRAINT fk_collections_creator
+  FOREIGN KEY (created_by) REFERENCES users(id);
+
+ALTER TABLE disbursements
+ADD created_by INT NOT NULL,
+ADD CONSTRAINT fk_disbursements_creator
+  FOREIGN KEY (created_by) REFERENCES users(id);
+
+ALTER TABLE disbursements
+ADD allocation_id INT;
+
+ALTER TABLE disbursements
+ADD CONSTRAINT fk_disbursements_allocation
+FOREIGN KEY (allocation_id)
+REFERENCES budget_allocations(id);
+ 
+
 SELECT * FROM users;
+SELECT * FROM budget_entries;
 
 INSERT INTO users 
 (username, password, role, full_name, position, is_active)
@@ -211,4 +231,22 @@ UPDATE users SET is_active = 1 WHERE id = 3;
 UPDATE users SET is_active = 1 WHERE id = 4;
 UPDATE users SET is_active = 1 WHERE id = 5;
 UPDATE users SET is_active = 1 WHERE id = 6;
+
+show tables;
+
+ALTER TABLE budget_entries
+ADD fund_source VARCHAR(100) AFTER amount,
+ADD dv_number VARCHAR(50) AFTER payee,
+ADD remarks TEXT AFTER program_description;
+
+INSERT INTO budget_allocations (category, allocated_amount, utilized_amount, year)
+VALUES
+('A. Personal Services', 1200000.00, 0.00, 2026),
+('B. Maintenance and Other Operating Expenses (MOOE)', 800000.00, 0.00, 2026),
+('C. Capital Outlay', 500000.00, 0.00, 2026),
+('D. Special Purpose Appropriations (SPA)', 300000.00, 0.00, 2026),
+('E. Basic Services - Social Services', 400000.00, 0.00, 2026),
+('F. Infrastructure Projects - 20% Development Fund', 1000000.00, 0.00, 2026),
+('G. Other Services', 200000.00, 0.00, 2026);
+
 
