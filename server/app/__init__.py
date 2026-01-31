@@ -37,5 +37,3 @@ def create_app():
     app.register_blueprint(encoder_bp, url_prefix="/api")
 
     return app
-
-    return app

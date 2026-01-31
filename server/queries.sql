@@ -225,6 +225,9 @@ SELECT * FROM collections;
 SELECT * FROM disbursements;
 SELECT * FROM dfur_projects;
 
+ALTER TABLE budget_entries
+ADD COLUMN is_flagged BOOLEAN default 0 after review_status;
+
 ALTER TABLE dfur_projects
 RENAME COLUMN reamarks TO remarks;
 
@@ -237,8 +240,8 @@ ADD stats ENUM('planned','in_progress','complete','on_hold', 'cancelled') DEFAUL
 ADD no_extensions INT AFTER stats,
 ADD reamarks VARCHAR(200) AFTER no_extensions;
 
-ALTER TABLE dfur_projects
-ADD is_active BOOL default 1 after status;
+ALTER TABLE collections
+ADD is_active BOOL default 1 after is_flagged;
 
 SELECT COUNT(*) FROM collections
 WHERE transaction_date BETWEEN '2026-01-20' AND '2026-01-29';

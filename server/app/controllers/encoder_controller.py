@@ -19,45 +19,12 @@ from app.model.encoder.disbursements_db import (
     delete_disbursement_db,
     get_data_base_date_disbursement_db
 )
-
-from app.services.total_amount_calculation import (
-    total_amount_budget_allocation,
-    total_amount_collection,
-    total_amount_disbursement,
-)
 from app.model.encoder.dfur_db import(
     insert_dfur_db,
     get_all_dfur_db,
     put_dfur_db,
     delete_dfur_db
-)
-from app.services.total_dfur_projects import (
-    total_dfur_projects, 
-    total_approved_budget, 
-    total_active_projects
-)
-#CALCULATIONS===========================================+
-def get_total_amount_budget_allocation_controller():
-    try:
-        total_amount = total_amount_budget_allocation()
-        return jsonify(total_amount), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-def get_total_amount_collection_controller():
-    try:
-        total_amount = total_amount_collection()
-        return jsonify(total_amount), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-    
-def get_total_amount_disbursement_controller():
-    try:
-        total_amount = total_amount_disbursement()
-        return jsonify(total_amount), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
- 
+) 
 # CRUD ==================================================
 # BUDGET ENTRIES
 def insert_budget_entries_controller():
@@ -325,24 +292,3 @@ def delete_dfur_controller():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
     
-def handle_dfur_data():
-    try:
-        ...
-        data = {}
-        data["total_projects"] = total_dfur_projects()
-        data["total_approved_budget"] = total_approved_budget()
-        data["total_active_projects"] = total_active_projects()
-        return data
-        
-    except Exception as e:
-        return "Failed to handle data: "
-    
-def total_data_dfur_controller():
-    try:
-        result = handle_dfur_data()
-        if result:
-            return jsonify({"message": "Successfully retrieved data", "data": result}), 200
-        else:
-            return jsonify({"message": "Invalid data name"}), 400
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500

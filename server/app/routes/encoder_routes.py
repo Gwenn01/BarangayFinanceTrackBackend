@@ -1,8 +1,5 @@
 from flask import Blueprint
 from app.controllers.encoder_controller import (
-    get_total_amount_budget_allocation_controller,
-    get_total_amount_collection_controller,
-    get_total_amount_disbursement_controller,
     insert_budget_entries_controller,
     get_budget_entries_controller,
     update_budget_entries_controller,
@@ -20,24 +17,9 @@ from app.controllers.encoder_controller import (
     get_dfur_controller,
     put_dfur_controller,
     delete_dfur_controller,
-    total_data_dfur_controller
 )
 
 encoder_bp = Blueprint('encoder_bp', __name__)
-# CALCULATION =============================================
-@encoder_bp.route('/get-total-amount-budget-allocation', methods=['GET'])
-def get_total_amount_budget_allocation():
-    return get_total_amount_budget_allocation_controller()
-
-
-@encoder_bp.route('/get-total-amount-collection', methods=['GET'])
-def get_total_amount_collection():
-    return get_total_amount_collection_controller()
-
-
-@encoder_bp.route('/get-total-amount-disbursement', methods=['GET'])
-def get_total_amount_disbursement():
-    return get_total_amount_disbursement_controller()
 
 # CRUD ==================================================
 @encoder_bp.route('/post-budget-entries', methods=['POST'])
@@ -240,7 +222,3 @@ def delete_dfur_project():
     # }
     return delete_dfur_controller()
 
-@encoder_bp.route('/get-total-data-dfur-project', methods=['GET'])
-def total_data_dfur_project():
-    ...
-    return total_data_dfur_controller()
