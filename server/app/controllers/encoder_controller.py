@@ -27,6 +27,9 @@ from app.services.total_amount_calculation import (
 )
 from app.model.encoder.dfur_db import(
     insert_dfur_db,
+    get_all_dfur_db,
+    put_dfur_db,
+    delete_dfur_db
 )
 #CALCULATIONS===========================================+
 def get_total_amount_budget_allocation_controller():
@@ -281,5 +284,38 @@ def insert_dfur_controller():
             return jsonify({"message": "Successfully inserted data"}), 200
         else:
             return jsonify({"message": "Failed to insert data"}), 500
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    
+def put_dfur_controller():
+    try:
+        data = request.get_json()
+        result = put_dfur_db(data)
+        if result:
+            return jsonify({"message": "Successfully updated data"}), 200
+        else:
+            return jsonify({"message": "Failed to update data"}), 500
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+def get_dfur_controller():
+    try:
+        result = get_all_dfur_db()
+        if result:
+            return jsonify({"message": "Successfully retrieved data", "data": result}), 200
+        else:
+            return jsonify({"message": "Invalid data name"}), 400
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    
+def delete_dfur_controller():
+    try:
+        data = request.get_json()
+        id = data['id']
+        result = delete_dfur_db(id)
+        if result:
+            return jsonify({"message": "Successfully deleted data"}), 200
+        else:
+            return jsonify({"message": "Failed to delete data"}), 500
     except Exception as e:
         return jsonify({"message": str(e)}), 500

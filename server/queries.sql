@@ -226,6 +226,9 @@ SELECT * FROM disbursements;
 SELECT * FROM dfur_projects;
 
 ALTER TABLE dfur_projects
+RENAME COLUMN reamarks TO remarks;
+
+ALTER TABLE dfur_projects
 ADD name_of_collection VARCHAR(100) AFTER transaction_date,
 ADD total_cost_incurred DECIMAL(14,2) AFTER total_cost_approved,
 ADD date_started DATE AFTER total_cost_incurred,
@@ -233,6 +236,9 @@ ADD target_completion_date DATE AFTER date_started,
 ADD stats ENUM('planned','in_progress','complete','on_hold', 'cancelled') DEFAULT 'planned' AFTER target_completion_date,
 ADD no_extensions INT AFTER stats,
 ADD reamarks VARCHAR(200) AFTER no_extensions;
+
+ALTER TABLE dfur_projects
+ADD is_active BOOL default 1 after status;
 
 SELECT COUNT(*) FROM collections
 WHERE transaction_date BETWEEN '2026-01-20' AND '2026-01-29';

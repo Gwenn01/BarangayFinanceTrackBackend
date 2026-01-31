@@ -16,7 +16,10 @@ from app.controllers.encoder_controller import (
     put_disbursement_controller,
     delete_disbursement_controller,
     get_data_base_range_date_controller,
-    insert_dfur_controller
+    insert_dfur_controller,
+    get_dfur_controller,
+    put_dfur_controller,
+    delete_dfur_controller
 )
 
 encoder_bp = Blueprint('encoder_bp', __name__)
@@ -186,4 +189,51 @@ def get_data_range():
 @encoder_bp.route('/insert-dfur-project', methods=['POST'])
 def insert_dfur_project():
     ...
+    # {
+    #     "transaction_id": "COLL-2026-001",
+    #     "transaction_date": "2026-01-22",
+    #     "name_of_collection": "Barangay Road Improvement Fund",
+    #     "project": "Concrete Road Rehabilitation Phase 1",
+    #     "location": "Barangay San Isidro, District 2",
+    #     "total_cost_approved": 1500000.00,
+    #     "total_cost_incurred": 1487500.50,
+    #     "date_started": "2025-11-15",
+    #     "target_completion_date": "2026-02-15",
+    #     "stats": "palnned",
+    #     "no_extensions": 0,
+    #     "remarks": "Project progressing on schedule; materials delivered"
+    # }
     return insert_dfur_controller()
+
+@encoder_bp.route('/get-dfur-project', methods=['GET'])
+def get_dfur_project():
+    ...
+    return get_dfur_controller()
+
+@encoder_bp.route('/update-dfur-project', methods=['PUT'])
+def update_dfur_project():
+    ...
+    # {
+    #     "id": "1",
+    #     "transaction_id": "COLL-2026-001",
+    #     "transaction_date": "2026-01-22",
+    #     "name_of_collection": "Barangay Road Improvement Fund",
+    #     "project": "Concrete Road Rehabilitation Phase 1",
+    #     "location": "Barangay San Isidro, District 2",
+    #     "total_cost_approved": 1500000.00,
+    #     "total_cost_incurred": 1487500.50,
+    #     "date_started": "2025-11-15",
+    #     "target_completion_date": "2026-02-15",
+    #     "stats": "palnned",
+    #     "no_extensions": 0,
+    #     "remarks": "Project progressing on schedule; materials delivered"
+    # }
+    return put_dfur_controller()
+
+@encoder_bp.route('/delete-dfur-project', methods=['DELETE'])
+def delete_dfur_project():
+    ...
+    # {
+    #     "id": "1"
+    # }
+    return delete_dfur_controller()
