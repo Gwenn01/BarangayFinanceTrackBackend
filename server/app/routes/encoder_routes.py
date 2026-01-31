@@ -15,7 +15,8 @@ from app.controllers.encoder_controller import (
     get_disbursement_controller,
     put_disbursement_controller,
     delete_disbursement_controller,
-    get_data_base_range_date_controller
+    get_data_base_range_date_controller,
+    insert_dfur_controller
 )
 
 encoder_bp = Blueprint('encoder_bp', __name__)
@@ -181,3 +182,8 @@ def get_data_range():
     #     "data_name": "collections"
     # }
     return get_data_base_range_date_controller()
+
+@encoder_bp.route('/insert-dfur-project', methods=['POST'])
+def insert_dfur_project():
+    ...
+    return insert_dfur_controller()

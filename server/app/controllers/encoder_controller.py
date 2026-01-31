@@ -25,6 +25,9 @@ from app.services.total_amount_calculation import (
     total_amount_collection,
     total_amount_disbursement,
 )
+from app.model.encoder.dfur_db import(
+    insert_dfur_db,
+)
 #CALCULATIONS===========================================+
 def get_total_amount_budget_allocation_controller():
     try:
@@ -270,3 +273,13 @@ def get_data_base_range_date_controller():
     
 
 #DFE PROJECT  
+def insert_dfur_controller():
+    try:
+        data = request.get_json()
+        result = insert_dfur_db(data)
+        if result:
+            return jsonify({"message": "Successfully inserted data"}), 200
+        else:
+            return jsonify({"message": "Failed to insert data"}), 500
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
