@@ -11,6 +11,33 @@ export const api = {
     edit: `${API_BASE_URL}/edit-user`,
     delete: `${API_BASE_URL}/delete-user`,
   },
+  budgetEntries: {
+    getAll: `${API_BASE_URL}/get-budget-entries`,
+    create: `${API_BASE_URL}/post-budget-entries`,
+    update: `${API_BASE_URL}/put-budget-entries`,
+    delete: `${API_BASE_URL}/delete-budget-entries`,
+  },
+  collections: {
+    getAll: `${API_BASE_URL}/get-collection`,
+    create: `${API_BASE_URL}/insert-collection`,
+    update: `${API_BASE_URL}/put-collection`,
+    delete: `${API_BASE_URL}/delete-collection`,
+    generateId: `${API_BASE_URL}/collections/generate-id`,
+  },
+  disbursements: {
+    getAll: `${API_BASE_URL}/get-disbursement`,
+    create: `${API_BASE_URL}/insert-disbursement`,
+    update: `${API_BASE_URL}/put-disbursement`,
+    delete: `${API_BASE_URL}/delete-disbursement`,
+    generateId: `${API_BASE_URL}/disbursements/generate-id`,
+  },
+  dfurProject: {
+    create: `${API_BASE_URL}/insert-dfur-project`,
+    getAll: `${API_BASE_URL}/get-dfur-project`,
+    update: `${API_BASE_URL}/update-dfur-project`,
+    delete: `${API_BASE_URL}/delete-dfur-project`,
+  }
+
 };
 
 // Generic API call function with error handling

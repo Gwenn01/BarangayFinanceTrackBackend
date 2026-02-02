@@ -58,7 +58,7 @@ export function AppSidebar() {
   const [location] = useLocation();
 
   return (
-    <Sidebar>
+    <Sidebar className="">
       <SidebarHeader className="border-b border-sidebar-border p-6">
         <div className="flex items-center gap-3">
           <img 

@@ -56,7 +56,7 @@ export function EncoderLayout({ children }: EncoderLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r bg-card flex flex-col overflow-y-auto">
+      <aside className="w-1/6 border-r bg-card flex flex-col overflow-y-auto">
         {/* Barangay Header */}
         <div className="p-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center gap-3 mb-3">

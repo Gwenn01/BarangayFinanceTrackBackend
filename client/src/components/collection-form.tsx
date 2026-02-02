@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { Plus, Edit } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -29,16 +29,15 @@ import {
 } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 
-import { queryClient, apiRequest } from "../lib/queryClient";
+import { queryClient } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
 import { getAllNatureOptions, FUND_SOURCES } from "../lib/collectionCategories";
-
-
 import { format } from "date-fns";
+import { api, apiCall } from "../utils/api";
 
 type InsertCollection = {
   transactionId: string;
-  transactionDate: Date | null;
+  transactionDate: string;
   natureOfCollection: string;
   category: string;
   subcategory: string;
@@ -51,13 +50,56 @@ type InsertCollection = {
 };
 
 type Collection = InsertCollection & {
-  id: number;
+  id: string;
 };
 
+type BackendCollection = {
+  id?: number;
+  created_by: number;
+  transaction_id: string;
+  transaction_date: string;
+  nature_of_collection: string;
+  category: string;
+  subcategory: string;
+  purpose?: string;
+  fund_source: string;
+  amount: number;
+  payor: string;
+  or_number: string;
+  remarks?: string;
+};
 
 interface CollectionFormProps {
   collection?: Collection;
   trigger?: React.ReactNode;
+}
+
+// Convert frontend to backend format
+function frontendToBackend(
+  frontendData: InsertCollection,
+  createdBy: number,
+  collectionId?: string
+): BackendCollection {
+  const backendData: BackendCollection = {
+    created_by: createdBy,
+    transaction_id: frontendData.transactionId,
+    transaction_date: frontendData.transactionDate,
+    nature_of_collection: frontendData.natureOfCollection,
+    category: frontendData.category,
+    subcategory: frontendData.subcategory,
+    purpose: frontendData.purpose || "",
+    fund_source: frontendData.fundSource,
+    amount: parseFloat(frontendData.amount),
+    payor: frontendData.payor,
+    or_number: frontendData.orNumber,
+    remarks: frontendData.remarks || "",
+  };
+
+  if (collectionId) {
+    backendData.id = parseInt(collectionId);
+  }
+
+  return backendData;
 }
 
 export function CollectionForm({ collection, trigger }: CollectionFormProps) {
@@ -67,48 +109,63 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
   const [idGenerationError, setIdGenerationError] = useState(false);
   const isEditMode = !!collection;
 
+  // TODO: Get this from your auth context/session
+  const currentUserId = 1;
+
   const natureOptions = getAllNatureOptions();
 
-const form = useForm<InsertCollection>({
-  defaultValues: collection
-    ? {
-        transactionId: collection.transactionId,
-        //transactionDate: new Date(collection.transactionDate),
-        natureOfCollection: collection.natureOfCollection,
-        category: collection.category,
-        subcategory: collection.subcategory,
-        purpose: collection.purpose || "",
-        fundSource: collection.fundSource,
-        amount: collection.amount,
-        payor: collection.payor,
-        orNumber: collection.orNumber,
-        remarks: collection.remarks || "",
-      }
-    : {
-        transactionId: "",
-        transactionDate: new Date(),
-        natureOfCollection: "",
-        category: "",
-        subcategory: "",
-        purpose: "",
-        fundSource: "General Fund",
-        amount: "0",
-        payor: "",
-        orNumber: "",
-        remarks: "",
-      },
-});
-
+  const form = useForm<InsertCollection>({
+    defaultValues: collection
+      ? {
+          transactionId: collection.transactionId,
+          transactionDate: collection.transactionDate,
+          natureOfCollection: collection.natureOfCollection,
+          category: collection.category,
+          subcategory: collection.subcategory,
+          purpose: collection.purpose || "",
+          fundSource: collection.fundSource,
+          amount: collection.amount,
+          payor: collection.payor,
+          orNumber: collection.orNumber,
+          remarks: collection.remarks || "",
+        }
+      : {
+          transactionId: "",
+          transactionDate: format(new Date(), "yyyy-MM-dd"),
+          natureOfCollection: "",
+          category: "",
+          subcategory: "",
+          purpose: "",
+          fundSource: "General Fund",
+          amount: "0",
+          payor: "",
+          orNumber: "",
+          remarks: "",
+        },
+  });
 
   // Reset form when dialog closes or collection prop changes
   useEffect(() => {
     if (!open) {
-      form.reset();
+      if (!isEditMode) {
+        form.reset({
+          transactionId: "",
+          transactionDate: format(new Date(), "yyyy-MM-dd"),
+          natureOfCollection: "",
+          category: "",
+          subcategory: "",
+          purpose: "",
+          fundSource: "General Fund",
+          amount: "0",
+          payor: "",
+          orNumber: "",
+          remarks: "",
+        });
+      }
     } else if (collection) {
-      // Reset form with collection data when editing
       form.reset({
         transactionId: collection.transactionId,
-        //transactionDate: new Date(collection.transactionDate),
+        transactionDate: collection.transactionDate,
         natureOfCollection: collection.natureOfCollection,
         category: collection.category,
         subcategory: collection.subcategory,
@@ -120,20 +177,21 @@ const form = useForm<InsertCollection>({
         remarks: collection.remarks || "",
       });
     }
-  }, [open, collection, form]);
+  }, [open, collection, form, isEditMode]);
 
   // Fetch new transaction ID when dialog opens (only for create mode)
   useEffect(() => {
     if (open && !isEditMode) {
       setIdGenerationError(false);
-      fetch("/api/collections/generate-id")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to generate ID");
-          return res.json();
-        })
-        .then((data) => {
-          setTransactionId(data.transactionId);
-          form.setValue("transactionId", data.transactionId);
+      apiCall<{ transactionId: string }>(api.collections.generateId)
+        .then((result) => {
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          if (result.data?.transactionId) {
+            setTransactionId(result.data.transactionId);
+            form.setValue("transactionId", result.data.transactionId);
+          }
         })
         .catch((error) => {
           setIdGenerationError(true);
@@ -149,14 +207,28 @@ const form = useForm<InsertCollection>({
 
   const saveCollection = useMutation({
     mutationFn: async (data: InsertCollection) => {
-      if (isEditMode) {
-        return apiRequest("PATCH", `/api/collections/${collection.id}`, data);
-      } else {
-        return apiRequest("POST", "/api/collections", data);
+      const backendData = frontendToBackend(
+        data,
+        currentUserId,
+        isEditMode ? collection.id : undefined
+      );
+
+      const endpoint = isEditMode ? api.collections.update : api.collections.create;
+      const method = isEditMode ? "PUT" : "POST";
+
+      const result = await apiCall(endpoint, {
+        method,
+        body: JSON.stringify(backendData),
+      });
+
+      if (result.error) {
+        throw new Error(result.error);
       }
+
+      return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/collections"] });
+      queryClient.invalidateQueries({ queryKey: ["collections"] });
       toast({
         title: isEditMode ? "Collection Updated" : "Collection Added",
         description: isEditMode
@@ -249,16 +321,7 @@ const form = useForm<InsertCollection>({
                   <FormControl>
                     <Input
                       type="date"
-                      value={
-                        field.value
-                          ? format(new Date(field.value), "yyyy-MM-dd")
-                          : ""
-                      }
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? new Date(e.target.value) : null,
-                        )
-                      }
+                      {...field}
                       data-testid="input-transaction-date"
                     />
                   </FormControl>

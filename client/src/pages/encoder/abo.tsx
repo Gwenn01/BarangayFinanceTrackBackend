@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "../../components/ui/dialog";
 import {
   AlertDialog,
@@ -35,34 +34,114 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { BudgetEntryForm } from "../../components/budget-entry-form";
+import { BudgetEntryForm, BudgetEntry, InsertBudgetEntry } from "../../components/budget-entry-form";
 
-import { queryClient, apiRequest } from "../../lib/queryClient";
+import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 import { EncoderLayout } from "../../components/encoder-layout";
 
-type BudgetEntry = {
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
+
+// Backend API types
+type BackendBudgetEntry = {
   id: string;
-  transactionId: string;
-  transactionDate: string;
+  transaction_id: string;
+  transaction_date: string;
   category: string;
   subcategory: string;
   payee: string;
-  dvNumber: string;
-  amount: string;
+  dv_number: string;
+  amount: number;
+  fund_source: string;
+  expenditure_program: string;
+  program_description?: string;
+  remarks?: string;
+  allocation_id: number;
+  created_by: number;
 };
 
-type InsertBudgetEntry = {
-  transactionId: string;
-  transactionDate: string;
+type BackendInsertBudgetEntry = {
+  created_by: number;
+  transaction_id: string;
+  transaction_date: string;
   category: string;
   subcategory: string;
+  amount: number;
+  fund_source: string;
   payee: string;
-  dvNumber: string;
-  amount: string;
+  dv_number: string;
+  expenditure_program: string;
+  program_description?: string;
+  remarks?: string;
+  allocation_id: number;
 };
 
+// Helper function to make API calls
+async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || error.error || "API request failed");
+  }
+
+  return response.json();
+}
+
+// Convert backend format to frontend format
+function backendToFrontend(backendEntry: BackendBudgetEntry): BudgetEntry {
+  return {
+    id: backendEntry.id,
+    transactionId: backendEntry.transaction_id,
+    transactionDate: backendEntry.transaction_date,
+    category: backendEntry.category,
+    subcategory: backendEntry.subcategory,
+    payee: backendEntry.payee,
+    dvNumber: backendEntry.dv_number,
+    amount: backendEntry.amount.toString(),
+    fundSource: backendEntry.fund_source,
+    expenditureProgram: backendEntry.expenditure_program,
+    programDescription: backendEntry.program_description,
+    remarks: backendEntry.remarks,
+  };
+}
+
+// Convert frontend format to backend format
+function frontendToBackend(
+  frontendEntry: InsertBudgetEntry,
+  createdBy: number,
+  allocationId: number = 1,
+  entryId?: string
+): BackendInsertBudgetEntry & { id?: string } {
+  const backendData: BackendInsertBudgetEntry = {
+    created_by: createdBy,
+    transaction_id: frontendEntry.transactionId,
+    transaction_date: frontendEntry.transactionDate,
+    category: frontendEntry.category,
+    subcategory: frontendEntry.subcategory,
+    amount: parseFloat(frontendEntry.amount),
+    fund_source: frontendEntry.fundSource,
+    payee: frontendEntry.payee,
+    dv_number: frontendEntry.dvNumber,
+    expenditure_program: frontendEntry.expenditureProgram,
+    program_description: frontendEntry.programDescription || "",
+    remarks: frontendEntry.remarks || "",
+    allocation_id: allocationId,
+  };
+
+  if (entryId) {
+    return { ...backendData, id: entryId };
+  }
+
+  return backendData;
+}
 
 export default function ABO() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,16 +155,42 @@ export default function ABO() {
   );
   const { toast } = useToast();
 
+  // TODO: Get this from your auth context/session
+  const currentUserId = 1;
+  const allocationId = 1;
+
+  // Fetch budget entries
   const { data: entries = [], isLoading } = useQuery<BudgetEntry[]>({
-    queryKey: ["/api/budget-entries"],
+    queryKey: ["budget-entries"],
+    queryFn: async () => {
+      const currentYear = new Date().getFullYear();
+      const response = await apiFetch("/get-budget-entries", {
+        method: "POST",
+        body: JSON.stringify({ year: currentYear }),
+      });
+      
+      // Handle different response structures
+      const data = response.data || response;
+      
+      if (Array.isArray(data)) {
+        return data.map(backendToFrontend);
+      }
+      
+      return [];
+    },
   });
 
+  // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: InsertBudgetEntry) => {
-      return apiRequest("POST", "/api/budget-entries", data);
+      const backendData = frontendToBackend(data, currentUserId, allocationId);
+      return apiFetch("/post-budget-entries", {
+        method: "POST",
+        body: JSON.stringify(backendData),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/budget-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
       toast({
         title: "Budget Entry Added",
         description: "Budget entry has been successfully added to ABO.",
@@ -103,6 +208,7 @@ export default function ABO() {
     },
   });
 
+  // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({
       id,
@@ -111,10 +217,14 @@ export default function ABO() {
       id: string;
       data: InsertBudgetEntry;
     }) => {
-      return apiRequest("PATCH", `/api/budget-entries/${id}`, data);
+      const backendData = frontendToBackend(data, currentUserId, allocationId, id);
+      return apiFetch("/put-budget-entries", {
+        method: "PUT",
+        body: JSON.stringify(backendData),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/budget-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
       toast({
         title: "Budget Entry Updated",
         description: "Budget entry has been successfully updated.",
@@ -132,12 +242,16 @@ export default function ABO() {
     },
   });
 
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/budget-entries/${id}`, undefined);
+      return apiFetch("/delete-budget-entries", {
+        method: "DELETE",
+        body: JSON.stringify({ id }),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/budget-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
       toast({
         title: "Budget Entry Deleted",
         description: "Budget entry has been successfully deleted.",
@@ -365,7 +479,7 @@ export default function ABO() {
             </DialogHeader>
             <BudgetEntryForm
               mode={mode}
-              //entry={selectedEntry}
+              entry={selectedEntry}
               onSubmit={handleSubmit}
               isPending={createMutation.isPending || updateMutation.isPending}
               onCancel={() => setDialogOpen(false)}

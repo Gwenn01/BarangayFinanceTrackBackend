@@ -29,18 +29,36 @@ import {
 } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 
-import { queryClient, apiRequest } from "../lib/queryClient";
+import { queryClient } from "../lib/queryClient";
 import { useToast } from "../hooks/use-toast";
 import {
   getAllDisbursementNatureOptions,
   DISBURSEMENT_FUND_SOURCES,
-  DISBURSEMENT_CATEGORIES,
 } from "../lib/disbursementCategories";
 import { format } from "date-fns";
+import { api, apiCall } from "../utils/api";
 
+// Backend types
+type BackendDisbursement = {
+  id?: number;
+  created_by: number;
+  transaction_id: string;
+  transaction_date: string;
+  nature_of_disbursement: string;
+  category: string;
+  subcategory: string;
+  program_description?: string;
+  fund_source: string;
+  amount: number;
+  payee: string;
+  dv_number: string;
+  remarks?: string;
+};
+
+// Frontend types
 type InsertDisbursement = {
   transactionId: string;
-  transactionDate: string; // yyyy-MM-dd
+  transactionDate: string;
   natureOfDisbursement: string;
   category: string;
   subcategory: string;
@@ -53,13 +71,40 @@ type InsertDisbursement = {
 };
 
 type Disbursement = InsertDisbursement & {
-  id: number;
+  id: string;
 };
-
 
 interface DisbursementFormProps {
   disbursement?: Disbursement;
   trigger?: React.ReactNode;
+}
+
+// Convert frontend to backend format
+function frontendToBackend(
+  frontendData: InsertDisbursement,
+  createdBy: number,
+  disbursementId?: string
+): BackendDisbursement {
+  const backendData: BackendDisbursement = {
+    created_by: createdBy,
+    transaction_id: frontendData.transactionId,
+    transaction_date: frontendData.transactionDate,
+    nature_of_disbursement: frontendData.natureOfDisbursement,
+    category: frontendData.category,
+    subcategory: frontendData.subcategory,
+    program_description: frontendData.programDescription || "",
+    fund_source: frontendData.fundSource,
+    amount: parseFloat(frontendData.amount),
+    payee: frontendData.payee,
+    dv_number: frontendData.dvNumber,
+    remarks: frontendData.remarks || "",
+  };
+
+  if (disbursementId) {
+    backendData.id = parseInt(disbursementId);
+  }
+
+  return backendData;
 }
 
 export function DisbursementForm({
@@ -72,45 +117,60 @@ export function DisbursementForm({
   const [idGenerationError, setIdGenerationError] = useState(false);
   const isEditMode = !!disbursement;
 
+  // TODO: Get this from your auth context/session
+  const currentUserId = 1;
+
   const natureOptions = getAllDisbursementNatureOptions();
 
-const form = useForm<InsertDisbursement>({
-  defaultValues: disbursement
-    ? {
-        transactionId: disbursement.transactionId,
-        transactionDate: disbursement.transactionDate,
-        natureOfDisbursement: disbursement.natureOfDisbursement,
-        category: disbursement.category,
-        subcategory: disbursement.subcategory,
-        programDescription: disbursement.programDescription || "",
-        fundSource: disbursement.fundSource,
-        amount: disbursement.amount,
-        payee: disbursement.payee,
-        dvNumber: disbursement.dvNumber,
-        remarks: disbursement.remarks || "",
-      }
-    : {
-        transactionId: "",
-        transactionDate: format(new Date(), "yyyy-MM-dd"),
-        natureOfDisbursement: "",
-        category: "",
-        subcategory: "",
-        programDescription: "",
-        fundSource: "General Fund",
-        amount: "0",
-        payee: "",
-        dvNumber: "",
-        remarks: "",
-      },
-});
-
+  const form = useForm<InsertDisbursement>({
+    defaultValues: disbursement
+      ? {
+          transactionId: disbursement.transactionId,
+          transactionDate: disbursement.transactionDate,
+          natureOfDisbursement: disbursement.natureOfDisbursement,
+          category: disbursement.category,
+          subcategory: disbursement.subcategory,
+          programDescription: disbursement.programDescription || "",
+          fundSource: disbursement.fundSource,
+          amount: disbursement.amount,
+          payee: disbursement.payee,
+          dvNumber: disbursement.dvNumber,
+          remarks: disbursement.remarks || "",
+        }
+      : {
+          transactionId: "",
+          transactionDate: format(new Date(), "yyyy-MM-dd"),
+          natureOfDisbursement: "",
+          category: "",
+          subcategory: "",
+          programDescription: "",
+          fundSource: "General Fund",
+          amount: "0",
+          payee: "",
+          dvNumber: "",
+          remarks: "",
+        },
+  });
 
   // Reset form when dialog closes or disbursement prop changes
   useEffect(() => {
     if (!open) {
-      form.reset();
+      if (!isEditMode) {
+        form.reset({
+          transactionId: "",
+          transactionDate: format(new Date(), "yyyy-MM-dd"),
+          natureOfDisbursement: "",
+          category: "",
+          subcategory: "",
+          programDescription: "",
+          fundSource: "General Fund",
+          amount: "0",
+          payee: "",
+          dvNumber: "",
+          remarks: "",
+        });
+      }
     } else if (disbursement) {
-      // Reset form with disbursement data when editing
       form.reset({
         transactionId: disbursement.transactionId,
         transactionDate: disbursement.transactionDate,
@@ -125,20 +185,21 @@ const form = useForm<InsertDisbursement>({
         remarks: disbursement.remarks || "",
       });
     }
-  }, [open, disbursement, form]);
+  }, [open, disbursement, form, isEditMode]);
 
   // Fetch new transaction ID when dialog opens (only for create mode)
   useEffect(() => {
     if (open && !isEditMode) {
       setIdGenerationError(false);
-      fetch("/api/disbursements/generate-id")
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to generate ID");
-          return res.json();
-        })
-        .then((data) => {
-          setTransactionId(data.transactionId);
-          form.setValue("transactionId", data.transactionId);
+      apiCall<{ transactionId: string }>(api.disbursements.generateId)
+        .then((result) => {
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          if (result.data?.transactionId) {
+            setTransactionId(result.data.transactionId);
+            form.setValue("transactionId", result.data.transactionId);
+          }
         })
         .catch((error) => {
           setIdGenerationError(true);
@@ -154,18 +215,28 @@ const form = useForm<InsertDisbursement>({
 
   const saveDisbursement = useMutation({
     mutationFn: async (data: InsertDisbursement) => {
-      if (isEditMode) {
-        return apiRequest(
-          "PATCH",
-          `/api/disbursements/${disbursement.id}`,
-          data,
-        );
-      } else {
-        return apiRequest("POST", "/api/disbursements", data);
+      const backendData = frontendToBackend(
+        data,
+        currentUserId,
+        isEditMode ? disbursement.id : undefined
+      );
+
+      const endpoint = isEditMode ? api.disbursements.update : api.disbursements.create;
+      const method = isEditMode ? "PUT" : "POST";
+
+      const result = await apiCall(endpoint, {
+        method,
+        body: JSON.stringify(backendData),
+      });
+
+      if (result.error) {
+        throw new Error(result.error);
       }
+
+      return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/disbursements"] });
+      queryClient.invalidateQueries({ queryKey: ["disbursements"] });
       toast({
         title: isEditMode ? "Disbursement Updated" : "Disbursement Added",
         description: isEditMode
