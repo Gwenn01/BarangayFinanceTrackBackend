@@ -25,6 +25,8 @@ from app.model.encoder.dfur_db import(
     put_dfur_db,
     delete_dfur_db
 ) 
+from datetime import datetime
+import random
 # CRUD ==================================================
 # BUDGET ENTRIES
 def insert_budget_entries_controller():
@@ -292,3 +294,20 @@ def delete_dfur_controller():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
     
+
+def generate_transaction_id_controller(prefix, data_type):
+    counter = 1
+    if data_type == 'collection':
+        counter = len(get_collection_db())
+    elif data_type == 'budget-entries':
+        counter = len(get_budget_entries_db)   
+    elif data_type == 'disbursement':
+        counter = len(get_disbursement_db())
+    elif data_type == 'dfur':
+        counter = len(get_all_dfur_db())
+    
+    year = datetime.now().year
+    return f"{prefix}-{year}-{counter:03d}"
+
+def generate_11_digit_number_controller():
+    return random.randint(10_000_000_000, 99_999_999_999)
