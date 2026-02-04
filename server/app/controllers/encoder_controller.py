@@ -252,7 +252,18 @@ def get_data_base_range_date_controller():
 #DFE PROJECT  
 def insert_dfur_controller():
     try:
-        data = request.get_json()
+        data = request.get_json();
+        if data['status'] == 'Planned':
+            data['status'] = 'planned'
+        elif data['status'] == 'Completed':
+            data['status'] = 'completed'
+        elif data['status'] == 'On Hold':
+            data['status'] = 'on_hold'
+        elif data['status'] == 'Cancelled':
+            data['status'] = 'cancelled'
+        elif data['status'] == 'In Progress':
+            data['status'] = 'in_progress'
+        
         result = insert_dfur_db(data)
         if result:
             return jsonify({"message": "Successfully inserted data"}), 200
@@ -265,6 +276,7 @@ def put_dfur_controller():
     try:
         data = request.get_json()
         result = put_dfur_db(data)
+        
         if result:
             return jsonify({"message": "Successfully updated data"}), 200
         else:
@@ -305,6 +317,7 @@ def generate_transaction_id_controller(prefix, data_type):
         counter = len(get_disbursement_db())
     elif data_type == 'dfur':
         counter = len(get_all_dfur_db())
+    counter += 1
     
     year = datetime.now().year
     return f"{prefix}-{year}-{counter:03d}"
