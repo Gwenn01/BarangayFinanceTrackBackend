@@ -187,6 +187,38 @@ export default function DFUR() {
     enabled: open && !editingProject,
   });
 
+  // Fetch DFUR totals (summary)
+const { data: dfurTotalsResponse, isLoading: isTotalsLoading } = useQuery({
+  queryKey: ["dfur-totals"],
+  queryFn: async () => {
+    const result = await apiCall<{
+      overall_cost_approved: string;
+      overall_cost_incurred: string;
+      total_active: number;
+      total_approved: number;
+      total_data: number;
+      total_flagged: number;
+      total_pending: number;
+    }>(api.dfurProject.getTotalData);
+
+    if (result.error) throw new Error(result.error);
+    return result.data;
+  },
+});
+
+const dfurTotals = {
+  overallApproved: parseFloat(
+    dfurTotalsResponse?.overall_cost_approved || "0",
+  ),
+  overallIncurred: parseFloat(
+    dfurTotalsResponse?.overall_cost_incurred || "0",
+  ),
+  totalActive: dfurTotalsResponse?.total_active || 0,
+  totalProjects: dfurTotalsResponse?.total_data || 0,
+  totalPending: dfurTotalsResponse?.total_pending || 0,
+};
+
+
   const form = useForm<InsertDfurProject>({
     resolver: zodResolver(insertDfurProjectSchema),
     defaultValues: {
@@ -265,6 +297,7 @@ export default function DFUR() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-generate-id"] });
       toast({
         title: "DFUR Project Added",
@@ -297,6 +330,7 @@ export default function DFUR() {
       return result.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       toast({
         title: "Project Updated",
@@ -326,6 +360,7 @@ export default function DFUR() {
       return result.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       toast({
         title: "Project Deleted",
@@ -376,19 +411,7 @@ export default function DFUR() {
     })}`;
   };
 
-  const totalApproved =
-    projects?.reduce(
-      (sum: number, p: DfurProject) => sum + parseFloat(p.total_cost_approved),
-      0,
-    ) || 0;
-  const totalIncurred =
-    projects?.reduce(
-      (sum: number, p: DfurProject) => sum + parseFloat(p.total_cost_incurred),
-      0,
-    ) || 0;
-  const activeProjects =
-    projects?.filter((p: DfurProject) => p.status === "In Progress").length ||
-    0;
+
 
   return (
     <EncoderLayout>
@@ -728,8 +751,9 @@ export default function DFUR() {
                 className="text-4xl font-bold text-foreground"
                 data-testid="text-total-projects"
               >
-                {projects?.length || 0}
+                {isTotalsLoading ? "—" : dfurTotals.totalProjects}
               </p>
+
             </CardContent>
           </Card>
 
@@ -740,12 +764,15 @@ export default function DFUR() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p
-                className="text-3xl font-bold text-foreground"
-                data-testid="text-total-approved"
-              >
-                {formatCurrency(totalApproved)}
-              </p>
+                <p
+                  className="text-3xl font-bold text-foreground"
+                  data-testid="text-total-approved"
+                >
+                  {isTotalsLoading
+                    ? "—"
+                    : formatCurrency(dfurTotals.overallApproved)}
+                </p>
+
             </CardContent>
           </Card>
 
@@ -756,12 +783,13 @@ export default function DFUR() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p
-                className="text-4xl font-bold text-foreground"
-                data-testid="text-active-projects"
-              >
-                {activeProjects}
-              </p>
+                <p
+                  className="text-4xl font-bold text-foreground"
+                  data-testid="text-active-projects"
+                >
+                  {isTotalsLoading ? "—" : dfurTotals.totalActive}
+                </p>
+
             </CardContent>
           </Card>
         </div>

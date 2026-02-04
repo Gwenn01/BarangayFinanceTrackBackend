@@ -187,19 +187,37 @@ export function BudgetEntryForm({
   isPending,
   onCancel,
 }: BudgetEntryFormProps) {
-const { data: transactionIdData } = useQuery<{ transactionId: string }>({
+const { data: transactionIdData } = useQuery<{
+  transactionId: string;
+  dvNumber: string;
+}>({
   queryKey: ["budget-entries-generate-id"],
   queryFn: async () => {
-    const { data, error } = await apiCall<{ transactionId: string }>(
-      api.budgetEntries.generateId
-    );
+    const { data, error } = await apiCall<{
+      transaction_id: string;
+      div_number: number;
+    }>(api.budgetEntries.generateId);
+
     if (error) throw new Error(error);
-    // Normalize: backend may return transaction_id or transactionId
-    const id = data?.transactionId ?? (data as any)?.transaction_id;
-    return { transactionId: id };
+
+    return {
+      transactionId: data.transaction_id,
+      dvNumber: String(data.div_number), // ensure string for form
+    };
   },
   enabled: mode === "create",
 });
+
+const toDateInputValue = (dateString?: string) => {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+
+  return date.toISOString().split("T")[0]; // yyyy-MM-dd
+};
+
+
 
   const form = useForm<InsertBudgetEntry>({
     resolver: zodResolver(insertBudgetEntrySchema),
@@ -219,44 +237,47 @@ const { data: transactionIdData } = useQuery<{ transactionId: string }>({
   });
 
   // Reset form when mode changes or entry changes
-  useEffect(() => {
-    if (mode === "create") {
-      form.reset({
-        transactionId: transactionIdData?.transactionId || "",
-        transactionDate: "",
-        expenditureProgram: "",
-        category: "",
-        subcategory: "",
-        programDescription: "",
-        fundSource: "",
-        amount: "0",
-        payee: "",
-        dvNumber: "",
-        remarks: "",
-      });
-    } else if (mode === "edit" && entry) {
-      form.reset({
-        transactionId: entry.transactionId,
-        transactionDate: entry.transactionDate,
-        expenditureProgram: entry.expenditureProgram,
-        category: entry.category,
-        subcategory: entry.subcategory,
-        programDescription: entry.programDescription || "",
-        fundSource: entry.fundSource,
-        amount: entry.amount,
-        payee: entry.payee,
-        dvNumber: entry.dvNumber,
-        remarks: entry.remarks || "",
-      });
-    }
-  }, [mode, entry, transactionIdData, form]);
+useEffect(() => {
+  if (mode === "create") {
+    form.reset({
+      transactionId: transactionIdData?.transactionId || "",
+      dvNumber: transactionIdData?.dvNumber || "",
+      transactionDate: "",
+      expenditureProgram: "",
+      category: "",
+      subcategory: "",
+      programDescription: "",
+      fundSource: "",
+      amount: "",
+      payee: "",
+      remarks: "",
+    });
+  } else if (mode === "edit" && entry) {
+    form.reset({
+      transactionId: entry.transactionId,
+      transactionDate: toDateInputValue(entry.transactionDate),
+      expenditureProgram: entry.expenditureProgram,
+      category: entry.category,
+      subcategory: entry.subcategory,
+      programDescription: entry.programDescription || "",
+      fundSource: entry.fundSource,
+      amount: entry.amount,
+      payee: entry.payee,
+      dvNumber: entry.dvNumber,
+      remarks: entry.remarks || "",
+    });
+  }
+}, [mode, entry, transactionIdData, form]);
+
 
   // Update transaction ID when it's generated
-  useEffect(() => {
-    if (mode === "create" && transactionIdData?.transactionId) {
-      form.setValue("transactionId", transactionIdData.transactionId);
-    }
-  }, [transactionIdData, mode, form]);
+useEffect(() => {
+  if (mode === "create" && transactionIdData) {
+    form.setValue("transactionId", transactionIdData.transactionId);
+    form.setValue("dvNumber", transactionIdData.dvNumber);
+  }
+}, [transactionIdData, mode, form]);
+
 
   const selectedCategory = form.watch("category");
 
@@ -464,7 +485,7 @@ const { data: transactionIdData } = useQuery<{ transactionId: string }>({
               <FormControl>
                 <Input
                   {...field}
-                  placeholder="Disbursement Voucher number"
+                  disabled
                   data-testid="input-dv-number"
                 />
               </FormControl>
@@ -472,6 +493,7 @@ const { data: transactionIdData } = useQuery<{ transactionId: string }>({
             </FormItem>
           )}
         />
+
 
         <FormField
           control={form.control}

@@ -144,6 +144,15 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
         },
   });
 
+  const toDateInputValue = (dateString?: string) => {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+
+  return date.toISOString().split("T")[0]; // yyyy-MM-dd
+};
+
   // Reset form when dialog closes or collection prop changes
   useEffect(() => {
     if (!open) {
@@ -165,7 +174,7 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
     } else if (collection) {
       form.reset({
         transactionId: collection.transactionId,
-        transactionDate: collection.transactionDate,
+        transactionDate: toDateInputValue(collection.transactionDate),
         natureOfCollection: collection.natureOfCollection,
         category: collection.category,
         subcategory: collection.subcategory,

@@ -155,6 +155,15 @@ export function DisbursementForm({
         },
   });
 
+  const toDateInputValue = (dateString?: string) => {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+
+  return date.toISOString().split("T")[0]; // yyyy-MM-dd
+};
+
   // Reset form when dialog closes or disbursement prop changes
   useEffect(() => {
     if (!open) {
@@ -176,7 +185,7 @@ export function DisbursementForm({
     } else if (disbursement) {
       form.reset({
         transactionId: disbursement.transactionId,
-        transactionDate: disbursement.transactionDate,
+        transactionDate: toDateInputValue(disbursement.transactionDate),
         natureOfDisbursement: disbursement.natureOfDisbursement,
         category: disbursement.category,
         subcategory: disbursement.subcategory,

@@ -38,6 +38,7 @@ export const api = {
     update: `${API_BASE_URL}/update-dfur-project`,
     delete: `${API_BASE_URL}/delete-dfur-project`,
     generateId: `${API_BASE_URL}/dfur/generate_id`,
+    getTotalData: `${API_BASE_URL}/get-total-data-dfur-project`,
   }
 
 };
