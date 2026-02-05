@@ -311,8 +311,8 @@ def generate_transaction_id_controller(prefix, data_type):
     counter = 1
     if data_type == 'collection':
         counter = len(get_collection_db())
-    elif data_type == 'budget-entries':
-        counter = len(get_budget_entries_db)   
+    elif data_type == 'budget_entries':
+        counter = len(get_budget_entries_db(datetime.now().year))
     elif data_type == 'disbursement':
         counter = len(get_disbursement_db())
     elif data_type == 'dfur':

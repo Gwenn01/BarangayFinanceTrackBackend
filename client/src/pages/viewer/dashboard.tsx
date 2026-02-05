@@ -242,7 +242,7 @@ export default function ViewerDashboard() {
   const pieChartColors = [COLORS.primary, COLORS.success, COLORS.warning, COLORS.purple, COLORS.danger];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+    <div className="min-h-screen bg-white">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
