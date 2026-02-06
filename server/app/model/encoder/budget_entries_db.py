@@ -57,7 +57,8 @@ def get_budget_entries_db(year):
                 be.payee,
                 be.dv_number,
                 be.amount,
-                ba.year
+                ba.year,
+                ba.created_at
             FROM budget_entries be
             JOIN budget_allocations ba
                 ON be.allocation_id = ba.id

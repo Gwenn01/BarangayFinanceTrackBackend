@@ -7,6 +7,18 @@ from app.validator.validate_user import (
     validate_user,
     validate_put_user                      
 )
+from app.model.encoder.budget_entries_db import (
+    get_budget_entries_db,
+)
+from app.model.encoder.collections_db import (
+    get_collection_db,
+)
+from app.model.encoder.disbursements_db import (
+    get_disbursement_db,
+)
+from app.model.encoder.dfur_db import(
+    get_all_dfur_db,
+) 
 
 def get_all_users_controller():
     try:
@@ -88,5 +100,30 @@ def delete_user_controller():
             return jsonify({"message": "User deleted successfully"}), 200
         else:
             return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+  
+
+#handle docs ========================
+def handle_docs():
+    try:
+        ...
+        docs = []
+        
+        docs.extend(get_budget_entries_db(2026))
+        docs.extend(get_disbursement_db())
+        docs.extend(get_collection_db())
+        docs.extend(get_all_dfur_db())
+        docs.sort(key=lambda x: x["created_at"], reverse=True)
+        return docs
+    except Exception as e:
+        print(e)
+        return None
+
+def get_all_docs_controller():
+    try:
+        ...
+        docs = handle_docs()
+        return jsonify(docs), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 404
