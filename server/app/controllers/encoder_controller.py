@@ -276,6 +276,16 @@ def put_dfur_controller():
     try:
         data = request.get_json()
         result = put_dfur_db(data)
+        if data['status'] == 'Planned':
+            data['status'] = 'planned'
+        elif data['status'] == 'Completed':
+            data['status'] = 'completed'
+        elif data['status'] == 'On Hold':
+            data['status'] = 'on_hold'
+        elif data['status'] == 'Cancelled':
+            data['status'] = 'cancelled'
+        elif data['status'] == 'In Progress':
+            data['status'] = 'in_progress'
         
         if result:
             return jsonify({"message": "Successfully updated data"}), 200

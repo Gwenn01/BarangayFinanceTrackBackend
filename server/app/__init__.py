@@ -28,6 +28,8 @@ def create_app():
     from app.routes.checker_routes import checker_bp
     #APPROVER
     from app.routes.approver_routes import approver_bp
+    #VIEWER
+    from app.routes.viewer_routes import viewer_bp
     #====================================================================================
     #TEST
     app.register_blueprint(db_test_bp, url_prefix="/api")
@@ -43,5 +45,6 @@ def create_app():
     app.register_blueprint(checker_bp, url_prefix="/api")
     #APPROVER
     app.register_blueprint(approver_bp, url_prefix="/api")
-
+    #VIEWER
+    app.register_blueprint(viewer_bp, url_prefix="/api")
     return app
