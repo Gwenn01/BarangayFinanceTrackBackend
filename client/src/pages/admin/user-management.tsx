@@ -97,9 +97,10 @@ const roles = [
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  currentPage: "users" | "activity";
 }
 
-function AdminLayout({ children }: AdminLayoutProps) {
+function AdminLayout({ children, currentPage }: AdminLayoutProps) {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
 
@@ -126,6 +127,13 @@ function AdminLayout({ children }: AdminLayoutProps) {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="px-4 py-3 border-b">
+          <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
+          <p className="text-xs text-muted-foreground">
+            {currentPage === "users" ? "User Management" : "Activity Log"}
+          </p>
         </div>
 
         <nav className="flex-1 p-3 space-y-2">
@@ -155,7 +163,7 @@ function AdminLayout({ children }: AdminLayoutProps) {
           </button>
         </nav>
 
-        <div className="border-t p-3">
+        <div className="border-t p-3 flex items-center justify-start">
           <UserMenu />
         </div>
       </aside>
@@ -381,7 +389,7 @@ export default function UserManagement() {
     role === "admin" || role === "superadmin" ? "secondary" : "outline";
 
   return (
-    <AdminLayout>
+    <AdminLayout currentPage="users">
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>

@@ -142,7 +142,7 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
           </button>
         </nav>
 
-        <div className="p-3 border-t">
+        <div className="border-t p-3 flex items-center justify-start">
           <UserMenu />
         </div>
       </aside>

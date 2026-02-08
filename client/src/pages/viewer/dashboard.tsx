@@ -127,20 +127,7 @@ type Comment = {
   name: string;
   email: string;
   comment: string;
-};
-
-export type CapitalOutlaySummary = {
-  totals: {
-    planned: number;
-    actual: number;
-    variance: number;
-  };
-  items: Array<{
-    label: string;
-    planned: number;
-    actual: number;
-    variance: number;
-  }>;
+  created_at?: string;
 };
 
 // Convert backend to frontend format
@@ -226,9 +213,19 @@ const fetchDfurProjects = async (): Promise<DfurProject[]> => {
 const fetchComments = async (): Promise<Comment[]> => {
   const response = await fetch(`${API_BASE_URL}/get-all-comments`);
   if (!response.ok) throw new Error('Failed to fetch comments');
+
   const data: Comment[] = await response.json();
-  return Array.isArray(data) ? data : [];
+
+  if (!Array.isArray(data)) return [];
+
+  // Sort descending by date (newest first)
+  return data.sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateB - dateA;
+  });
 };
+
 
 export default function ViewerDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -279,10 +276,6 @@ export default function ViewerDashboard() {
   const { data: comments, isLoading: isLoadingComments, refetch: refetchComments } = useQuery<Comment[]>({
     queryKey: ['comments'],
     queryFn: fetchComments,
-  });
-
-  const { data: capitalOutlaySummary } = useQuery<CapitalOutlaySummary>({
-    queryKey: ["/api/abr/capital-outlay-summary", currentYear],
   });
 
   const formatCurrency = (value: number) => {
@@ -358,29 +351,45 @@ export default function ViewerDashboard() {
     }
   };
 
-  // Calculations
+  // Calculations based on actual API data
   const totalCollections = collections?.reduce((sum, c) => sum + safeParseAmount(c.amount), 0) || 0;
   const totalDisbursements = disbursements?.reduce((sum, d) => sum + safeParseAmount(d.amount), 0) || 0;
   const surplus = totalCollections - totalDisbursements;
   const totalApprovedCost = (dfurProjects || []).reduce((sum, p) => sum + safeParseAmount(p.total_cost_approved), 0);
   const totalIncurredCost = (dfurProjects || []).reduce((sum, p) => sum + safeParseAmount(p.total_cost_incurred), 0);
+  const utilizationRate = totalCollections > 0 ? ((totalDisbursements / totalCollections) * 100).toFixed(1) : "0";
 
-  const collectionsBySource = collections?.reduce((acc, c) => {
-    const source = c.nature_of_collection || c.category || "Other";
-    acc[source] = (acc[source] || 0) + safeParseAmount(c.amount);
+  // Group collections and disbursements by category for budget breakdown
+  const collectionsByCategory = collections?.reduce((acc, c) => {
+    const category = c.nature_of_collection || c.category || "Other";
+    acc[category] = (acc[category] || 0) + safeParseAmount(c.amount);
     return acc;
   }, {} as Record<string, number>);
-
-  const collectionsPieData = Object.entries(collectionsBySource || {}).map(([name, value]) => ({
-    name,
-    value,
-  })).slice(0, 5);
 
   const disbursementsByCategory = disbursements?.reduce((acc, d) => {
     const category = d.nature_of_disbursement || d.category || "Other";
     acc[category] = (acc[category] || 0) + safeParseAmount(d.amount);
     return acc;
   }, {} as Record<string, number>);
+
+  // Create budget breakdown data combining collections (as planned) and disbursements (as actual)
+  const allCategories = new Set([
+    ...Object.keys(collectionsByCategory || {}),
+    ...Object.keys(disbursementsByCategory || {})
+  ]);
+
+  const budgetBreakdownData = Array.from(allCategories).map(category => ({
+    category: category.length > 25 ? category.substring(0, 25) + '...' : category,
+    fullCategory: category,
+    planned: collectionsByCategory?.[category] || 0,
+    actual: disbursementsByCategory?.[category] || 0,
+    variance: (collectionsByCategory?.[category] || 0) - (disbursementsByCategory?.[category] || 0),
+  })).sort((a, b) => b.planned - a.planned); // Sort by planned budget descending
+
+  const collectionsPieData = Object.entries(collectionsByCategory || {}).map(([name, value]) => ({
+    name,
+    value,
+  })).slice(0, 5);
 
   const disbursementsPieData = Object.entries(disbursementsByCategory || {}).map(([name, value]) => ({
     name,
@@ -562,21 +571,21 @@ export default function ViewerDashboard() {
             {[
               { 
                 icon: Wallet, 
-                value: formatCurrencyCompact(capitalOutlaySummary?.totals.planned || 0), 
-                label: "Total Budget", 
-                color: "blue"
-              },
-              { 
-                icon: TrendingUp, 
                 value: formatCurrencyCompact(totalCollections), 
-                label: "Collections", 
-                color: "emerald"
+                label: "Total Collections", 
+                color: "blue"
               },
               { 
                 icon: TrendingDown, 
                 value: formatCurrencyCompact(totalDisbursements), 
-                label: "Disbursements", 
+                label: "Total Disbursements", 
                 color: "amber"
+              },
+              { 
+                icon: TrendingUp, 
+                value: formatCurrencyCompact(surplus), 
+                label: surplus >= 0 ? "Surplus" : "Deficit", 
+                color: surplus >= 0 ? "emerald" : "red"
               },
               { 
                 icon: Target, 
@@ -624,54 +633,54 @@ export default function ViewerDashboard() {
                 <div className="p-3 bg-blue-100 rounded-xl">
                   <DollarSign className="w-6 h-6 text-blue-600" />
                 </div>
-                <Badge className="bg-blue-100 text-blue-700 border-0">Planned</Badge>
+                <Badge className="bg-blue-100 text-blue-700 border-0">Collections</Badge>
               </div>
               <div className="text-3xl font-bold text-slate-900 mb-1">
-                {formatCurrencyCompact(capitalOutlaySummary?.totals.planned || 0)}
+                {formatCurrencyCompact(totalCollections)}
               </div>
-              <div className="text-sm text-slate-600 font-medium">Planned Budget</div>
+              <div className="text-sm text-slate-600 font-medium">Total Income</div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl p-6 border border-emerald-200">
+            <div className="stat-card glass-card rounded-2xl p-6 border border-amber-200">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-emerald-100 rounded-xl">
-                  <Activity className="w-6 h-6 text-emerald-600" />
+                <div className="p-3 bg-amber-100 rounded-xl">
+                  <Activity className="w-6 h-6 text-amber-600" />
                 </div>
-                <Badge className="bg-emerald-100 text-emerald-700 border-0">Actual</Badge>
+                <Badge className="bg-amber-100 text-amber-700 border-0">Disbursements</Badge>
               </div>
               <div className="text-3xl font-bold text-slate-900 mb-1">
-                {formatCurrencyCompact(capitalOutlaySummary?.totals.actual || 0)}
+                {formatCurrencyCompact(totalDisbursements)}
               </div>
-              <div className="text-sm text-slate-600 font-medium">Actual Spending</div>
+              <div className="text-sm text-slate-600 font-medium">Total Spending</div>
             </div>
 
             <div className="stat-card glass-card rounded-2xl p-6 border border-emerald-200">
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-xl ${
-                  (capitalOutlaySummary?.totals.variance || 0) >= 0 
+                  surplus >= 0 
                     ? 'bg-emerald-100' 
                     : 'bg-red-100'
                 }`}>
-                  {(capitalOutlaySummary?.totals.variance || 0) >= 0 ? (
+                  {surplus >= 0 ? (
                     <ArrowUpRight className="w-6 h-6 text-emerald-600" />
                   ) : (
                     <ArrowDownRight className="w-6 h-6 text-red-600" />
                   )}
                 </div>
                 <Badge className={`border-0 ${
-                  (capitalOutlaySummary?.totals.variance || 0) >= 0 
+                  surplus >= 0 
                     ? 'bg-emerald-100 text-emerald-700' 
                     : 'bg-red-100 text-red-700'
                 }`}>
-                  {(capitalOutlaySummary?.totals.variance || 0) >= 0 ? 'Surplus' : 'Deficit'}
+                  {surplus >= 0 ? 'Surplus' : 'Deficit'}
                 </Badge>
               </div>
               <div className={`text-3xl font-bold mb-1 ${
-                (capitalOutlaySummary?.totals.variance || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                surplus >= 0 ? 'text-emerald-600' : 'text-red-600'
               }`}>
-                {formatCurrencyCompact(Math.abs(capitalOutlaySummary?.totals.variance || 0))}
+                {formatCurrencyCompact(Math.abs(surplus))}
               </div>
-              <div className="text-sm text-slate-600 font-medium">Variance</div>
+              <div className="text-sm text-slate-600 font-medium">Net Position</div>
             </div>
 
             <div className="stat-card glass-card rounded-2xl p-6 border border-violet-200">
@@ -682,9 +691,7 @@ export default function ViewerDashboard() {
                 <Badge className="bg-violet-100 text-violet-700 border-0">Rate</Badge>
               </div>
               <div className="text-3xl font-bold text-slate-900 mb-1">
-                {capitalOutlaySummary?.totals.planned 
-                  ? ((capitalOutlaySummary.totals.actual / capitalOutlaySummary.totals.planned) * 100).toFixed(1)
-                  : 0}%
+                {utilizationRate}%
               </div>
               <div className="text-sm text-slate-600 font-medium">Utilization Rate</div>
             </div>
@@ -694,8 +701,8 @@ export default function ViewerDashboard() {
           <div className="glass-card rounded-3xl p-8 shadow-2xl">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Budget Allocation & Spending</h3>
-                <p className="text-slate-600">Planned vs actual expenditure by category</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Budget Analysis by Category</h3>
+                <p className="text-slate-600">Collections (planned) vs disbursements (actual) by category</p>
               </div>
               <div className="p-4 bg-blue-100 rounded-2xl">
                 <BarChart3 className="w-8 h-8 text-blue-600" />
@@ -703,11 +710,7 @@ export default function ViewerDashboard() {
             </div>
             <ResponsiveContainer width="100%" height={450}>
               <BarChart 
-                data={capitalOutlaySummary?.items?.map(item => ({
-                  category: item.label.length > 25 ? item.label.substring(0, 25) + '...' : item.label,
-                  planned: item.planned,
-                  actual: item.actual,
-                })) || []}
+                data={budgetBreakdownData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
               >
                 <defs>
@@ -751,14 +754,14 @@ export default function ViewerDashboard() {
                 />
                 <Bar 
                   dataKey="planned" 
-                  name="Planned Budget" 
+                  name="Collections (Planned)" 
                   fill="url(#plannedGradient)" 
                   radius={[8, 8, 0, 0]}
                   maxBarSize={60}
                 />
                 <Bar 
                   dataKey="actual" 
-                  name="Actual Spending" 
+                  name="Disbursements (Actual)" 
                   fill="url(#actualGradient)" 
                   radius={[8, 8, 0, 0]}
                   maxBarSize={60}
@@ -1335,19 +1338,19 @@ export default function ViewerDashboard() {
                 <thead className="bg-slate-50/80 backdrop-blur-sm border-b-2 border-slate-200">
                   <tr className="text-xs uppercase text-slate-600">
                     <th className="text-left py-5 px-6 font-bold">Category</th>
-                    <th className="text-right py-5 px-6 font-bold">Planned</th>
-                    <th className="text-right py-5 px-6 font-bold">Actual</th>
+                    <th className="text-right py-5 px-6 font-bold">Collections</th>
+                    <th className="text-right py-5 px-6 font-bold">Disbursements</th>
                     <th className="text-right py-5 px-6 font-bold">Variance</th>
                     <th className="text-right py-5 px-6 font-bold">Utilized %</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {capitalOutlaySummary?.items?.map((item, index) => (
+                  {budgetBreakdownData.map((item, index) => (
                     <tr 
                       key={index} 
                       className="border-b border-slate-100 hover:bg-blue-50/30 transition-all duration-200"
                     >
-                      <td className="py-5 px-6 font-bold text-slate-900">{item.label}</td>
+                      <td className="py-5 px-6 font-bold text-slate-900" title={item.fullCategory}>{item.category}</td>
                       <td className="text-right py-5 px-6 text-slate-700 font-semibold">
                         {formatCurrency(item.planned)}
                       </td>
@@ -1599,32 +1602,58 @@ export default function ViewerDashboard() {
         </section>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-12">
-          <button
-            onClick={() => navigate("/role-selection")}
-            className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 text-white font-bold text-lg
-                       hover:from-blue-700 hover:to-violet-700 transition-all duration-300 shadow-xl hover:shadow-2xl
-                       transform hover:-translate-y-1 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 
-                          transform translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-            <span className="relative flex items-center gap-2">
-              Continue as User
-              <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-            </span>
-          </button>
+        <div className="flex flex-col items-center justify-center gap-8 py-2">
+          {/* Description Section */}
+          <div className="text-center max-w-2xl px-6">
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Monitor your barangay's financial activities in real-time. Access transparent reports, 
+              track community funds, and ensure accountability with verified data at your fingertips.
+            </p>
+          </div>
 
-          <button
-            onClick={() => navigate("/login")}
-            className="group px-10 py-5 rounded-2xl border-2 border-blue-600 text-blue-700 bg-white
-                       font-bold text-lg hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl
-                       transform hover:-translate-y-1"
-          >
-            <span className="flex items-center gap-2">
-              Login
-              <Shield className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            </span>
-          </button>
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <button
+              onClick={() => navigate("/role-selection")}
+              className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 text-white font-bold text-lg
+                         hover:from-blue-700 hover:to-violet-700 transition-all duration-300 shadow-xl hover:shadow-2xl
+                         transform hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 
+                            transform translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <span className="relative flex items-center gap-2">
+                Continue as User
+                <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              </span>
+            </button>
+            <button
+              onClick={() => navigate("/login")}
+              className="group px-10 py-5 rounded-2xl border-2 border-blue-600 text-blue-700 bg-white
+                         font-bold text-lg hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl
+                         transform hover:-translate-y-1"
+            >
+              <span className="flex items-center gap-2">
+                Login
+                <Shield className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </span>
+            </button>
+          </div>
+
+          {/* Trust indicators - Barangay focused */}
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-6 text-sm text-gray-500">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span>Real-Time Updates</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              <span>Verified Transactions</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
+              <span>100% Transparent</span>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -1657,28 +1686,6 @@ export default function ViewerDashboard() {
                   <FileText className="w-5 h-5 text-emerald-400" />
                 </div>
               </div>
-            </div>
-            
-            <div>
-              <h4 className="font-bold mb-4 text-white text-lg">Quick Access</h4>
-              <ul className="space-y-3 text-slate-300">
-                <li className="hover:text-blue-400 transition-colors cursor-pointer flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                  Budget Reports
-                </li>
-                <li className="hover:text-violet-400 transition-colors cursor-pointer flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-                  Project Updates
-                </li>
-                <li className="hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Financial Statements
-                </li>
-                <li className="hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  Community Feedback
-                </li>
-              </ul>
             </div>
             
             <div>

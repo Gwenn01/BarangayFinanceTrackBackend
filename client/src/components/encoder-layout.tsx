@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { UserMenu } from "../components/user-menu";
 import logoPath from "../assets/san_agustin.jpg";
 import { apiRequest, queryClient } from "../lib/queryClient";
+import { useAuth } from "@/contexts/auth-context";
 
 const encoderModules = [
   {
@@ -41,16 +42,10 @@ interface EncoderLayoutProps {
 
 export function EncoderLayout({ children }: EncoderLayoutProps) {
   const [location, setLocation] = useLocation();
-  
+  const { logout } = useAuth();
+
   const handleLogout = async () => {
-    try {
-      await apiRequest("POST", "/api/auth/logout");
-      queryClient.clear();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      window.location.href = "/login";
-    }
+    logout?.();
   };
 
   return (

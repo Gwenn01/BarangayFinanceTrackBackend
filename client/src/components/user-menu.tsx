@@ -18,17 +18,17 @@ export function UserMenu() {
     return null;
   }
 
-// const initials = user.username
-//   ? user.username
-//       .split(" ")
-//       .map((n) => n[0])
-//       .join("")
-//       .toUpperCase()
-//       .slice(0, 2)
-//   : "U";
+const initials = user.username
+  ? user.username
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  : "U";
 
   const handleLogout = async () => {
-    await logout();
+     logout?.();
   };
 
   return (
@@ -37,12 +37,12 @@ export function UserMenu() {
         <Button variant="ghost" className="flex items-center gap-2" data-testid="button-user-menu">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {/* {initials} */}
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col items-start text-sm">
             <span className="font-medium">{user.username}</span>
-            {/* <span className="text-xs text-muted-foreground">{user.position}</span> */}
+            <span className="text-xs text-muted-foreground">{user.role}</span>
           </div>
         </Button>
       </DropdownMenuTrigger>

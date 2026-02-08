@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { UserMenu } from "../components/user-menu";
 import logoPath from "../assets/san_agustin.jpg";
 import { apiRequest, queryClient } from "../lib/queryClient";
+import { useAuth } from "@/contexts/auth-context";
 
 const reviewerModules = [
   {
@@ -27,22 +28,16 @@ interface ReviewerLayoutProps {
 
 export function ReviewerLayout({ children }: ReviewerLayoutProps) {
   const [location, setLocation] = useLocation();
+  const { logout } = useAuth();
   
   const handleLogout = async () => {
-    try {
-      await apiRequest("POST", "/api/auth/logout");
-      queryClient.clear();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      window.location.href = "/login";
-    }
+    logout?.();
   };
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r bg-card flex flex-col overflow-y-auto">
+      <aside className="w-1/6 border-r bg-card flex flex-col overflow-y-auto">
         {/* Barangay Header */}
         <div className="p-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center gap-3 mb-3">
