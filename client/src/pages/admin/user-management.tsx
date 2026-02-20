@@ -44,6 +44,8 @@ import {
   Activity,
   ArrowLeft,
   Loader2,
+  Menu,
+  X,
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { UserMenu } from "../../components/user-menu";
@@ -103,6 +105,7 @@ interface AdminLayoutProps {
 function AdminLayout({ children, currentPage }: AdminLayoutProps) {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -110,65 +113,201 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
     setLocation("/login");
   };
 
+  const SidebarContent = () => (
+    <>
+      <div className="p-4 border-b">
+        <div className="flex items-center gap-3">
+          <img
+            src={logoPath}
+            alt="Barangay Logo"
+            className="h-12 w-12 rounded-full flex-shrink-0"
+          />
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold truncate">Barangay San Agustin</h2>
+            <p className="text-xs text-muted-foreground truncate">
+              Financial Monitoring System
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-3 border-b">
+        <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
+        <p className="text-xs text-muted-foreground">
+          {currentPage === "users" ? "User Management" : "Activity Log"}
+        </p>
+      </div>
+
+      <nav className="flex-1 p-3 space-y-2">
+        <Link href="/admin/users">
+          <div
+            className="flex items-center gap-2 p-2 rounded bg-blue-600 text-white cursor-pointer"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <Users className="h-4 w-4 flex-shrink-0" /> Users
+          </div>
+        </Link>
+
+        <Link href="/admin/activity-log">
+          <div
+            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <Activity className="h-4 w-4 flex-shrink-0" /> Activity Log
+          </div>
+        </Link>
+
+        <Link href="/">
+          <div
+            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <ArrowLeft className="h-4 w-4 flex-shrink-0" /> Back to Main
+          </div>
+        </Link>
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 p-2 text-destructive w-full text-left"
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" /> Logout
+        </button>
+      </nav>
+
+      <div className="border-t p-3 flex items-center justify-start">
+        <UserMenu />
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-64 border-r bg-card flex flex-col">
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 border-r bg-card flex-col flex-shrink-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-64 z-50 bg-card border-r flex flex-col transition-transform duration-300 md:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-end p-2 border-b">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <SidebarContent />
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Top Bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-card flex-shrink-0">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2 min-w-0">
             <img
               src={logoPath}
               alt="Barangay Logo"
-              className="h-12 w-12 rounded-full"
+              className="h-8 w-8 rounded-full flex-shrink-0"
             />
-            <div>
-              <h2 className="text-sm font-bold">Barangay San Agustin</h2>
-              <p className="text-xs text-muted-foreground">
-                Financial Monitoring System
-              </p>
-            </div>
+            <span className="text-sm font-bold truncate">Admin Panel</span>
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b">
-          <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
-          <p className="text-xs text-muted-foreground">
-            {currentPage === "users" ? "User Management" : "Activity Log"}
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- MOBILE USER CARD -------------------- */
+
+function UserCard({
+  user,
+  onEdit,
+  onDelete,
+}: {
+  user: User;
+  onEdit: (u: User) => void;
+  onDelete: (u: User) => void;
+}) {
+  const badgeVariant = (role: string) =>
+    role === "admin" || role === "superadmin" ? "secondary" : "outline";
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-semibold truncate">{user.full_name}</p>
+          <p className="text-sm text-muted-foreground truncate">
+            @{user.username}
           </p>
         </div>
-
-        <nav className="flex-1 p-3 space-y-2">
-          <Link href="/admin/users">
-            <div className="flex items-center gap-2 p-2 rounded bg-blue-600 text-white">
-              <Users className="h-4 w-4" /> Users
-            </div>
-          </Link>
-
-          <Link href="/admin/activity-log">
-            <div className="flex items-center gap-2 p-2 rounded hover:bg-muted">
-              <Activity className="h-4 w-4" /> Activity Log
-            </div>
-          </Link>
-
-          <Link href="/">
-            <div className="flex items-center gap-2 p-2 rounded hover:bg-muted">
-              <ArrowLeft className="h-4 w-4" /> Back to Main
-            </div>
-          </Link>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 p-2 text-destructive"
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onEdit(user)}
+            title="Edit user"
+            className="h-8 w-8"
           >
-            <LogOut className="h-4 w-4" /> Logout
-          </button>
-        </nav>
-
-        <div className="border-t p-3 flex items-center justify-start">
-          <UserMenu />
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onDelete(user)}
+            disabled={!user.is_active}
+            title="Deactivate user"
+            className="h-8 w-8"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
         </div>
-      </aside>
+      </div>
 
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="flex flex-wrap gap-2 items-center">
+        <Badge variant={badgeVariant(user.role)} className="text-xs">
+          {roles.find((r) => r.value === user.role)?.label || user.role}
+        </Badge>
+        {user.is_active ? (
+          <div className="flex items-center gap-1 text-green-600">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span className="text-xs">Active</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-red-600">
+            <ShieldOff className="h-3.5 w-3.5" />
+            <span className="text-xs">Inactive</span>
+          </div>
+        )}
+      </div>
+
+      {user.position && (
+        <p className="text-xs text-muted-foreground truncate">
+          {user.position}
+        </p>
+      )}
     </div>
   );
 }
@@ -203,17 +342,11 @@ export default function UserManagement() {
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error,
-        });
+        toast({ variant: "destructive", title: "Error", description: error });
         return;
       }
 
-      if (data) {
-        setUsers(data);
-      }
+      if (data) setUsers(data);
     } catch (error) {
       console.error("Failed to fetch users:", error);
       toast({
@@ -250,7 +383,7 @@ export default function UserManagement() {
     form.reset({
       user_id: user.id,
       username: user.username,
-      password: "", // Leave blank - only update if filled
+      password: "",
       fullname: user.full_name,
       position: user.position,
       role: user.role,
@@ -260,9 +393,8 @@ export default function UserManagement() {
   };
 
   const handleDeleteUser = async (user: User) => {
-    if (!confirm(`Are you sure you want to deactivate ${user.username}?`)) {
+    if (!confirm(`Are you sure you want to deactivate ${user.username}?`))
       return;
-    }
 
     try {
       const { data, error } = await apiCall(api.users.delete, {
@@ -271,20 +403,11 @@ export default function UserManagement() {
       });
 
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error,
-        });
+        toast({ variant: "destructive", title: "Error", description: error });
         return;
       }
 
-      toast({
-        title: "Success",
-        description: "User deactivated successfully",
-      });
-
-      // Refresh users list
+      toast({ title: "Success", description: "User deactivated successfully" });
       fetchUsers();
     } catch (error) {
       console.error("Failed to delete user:", error);
@@ -301,7 +424,6 @@ export default function UserManagement() {
 
     try {
       if (editingUser) {
-        // EDIT USER
         const payload: any = {
           user_id: data.user_id,
           fullname: data.fullname,
@@ -310,7 +432,6 @@ export default function UserManagement() {
           is_active: data.is_active,
         };
 
-        // Only include password if it's filled
         if (data.password && data.password.trim() !== "") {
           payload.password = data.password;
         }
@@ -321,20 +442,12 @@ export default function UserManagement() {
         });
 
         if (error) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error,
-          });
+          toast({ variant: "destructive", title: "Error", description: error });
           return;
         }
 
-        toast({
-          title: "Success",
-          description: "User updated successfully",
-        });
+        toast({ title: "Success", description: "User updated successfully" });
       } else {
-        // ADD USER
         if (!data.password || data.password.trim() === "") {
           toast({
             variant: "destructive",
@@ -357,18 +470,11 @@ export default function UserManagement() {
         });
 
         if (error) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: error,
-          });
+          toast({ variant: "destructive", title: "Error", description: error });
           return;
         }
 
-        toast({
-          title: "Success",
-          description: "User added successfully",
-        });
+        toast({ title: "Success", description: "User added successfully" });
       }
 
       setIsDialogOpen(false);
@@ -390,103 +496,122 @@ export default function UserManagement() {
 
   return (
     <AdminLayout currentPage="users">
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="flex justify-between items-start gap-3">
           <div>
-            <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl md:text-3xl font-bold">User Management</h1>
+            <p className="text-sm text-muted-foreground">
               Manage system users and access
             </p>
           </div>
-          <Button onClick={handleAddUser} disabled={isLoading}>
-            <UserPlus className="mr-2 h-4 w-4" /> Add User
+          <Button onClick={handleAddUser} disabled={isLoading} size="sm" className="flex-shrink-0">
+            <UserPlus className="mr-1.5 h-4 w-4" />
+            <span className="hidden sm:inline">Add User</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg md:text-xl">All Users</CardTitle>
             <CardDescription>
               {isLoading ? "Loading..." : `${users.length} users`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 md:p-6 md:pt-0">
             {isLoading ? (
-              <div className="flex justify-center items-center py-8">
+              <div className="flex justify-center items-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : users.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground px-4">
                 No users found
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Full Name</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Mobile: Card List */}
+                <div className="md:hidden space-y-3 px-4 pb-4">
                   {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.username}
-                      </TableCell>
-                      <TableCell>{user.full_name}</TableCell>
-                      <TableCell>{user.position}</TableCell>
-                      <TableCell>
-                        <Badge variant={badgeVariant(user.role)}>
-                          {roles.find((r) => r.value === user.role)?.label ||
-                            user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {user.is_active ? (
-                          <div className="flex items-center gap-2 text-green-600">
-                            <ShieldCheck className="h-4 w-4" />
-                            <span className="text-sm">Active</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-red-600">
-                            <ShieldOff className="h-4 w-4" />
-                            <span className="text-sm">Inactive</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleEditUser(user)}
-                          title="Edit user"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDeleteUser(user)}
-                          disabled={!user.is_active}
-                          title="Deactivate user"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <UserCard
+                      key={user.id}
+                      user={user}
+                      onEdit={handleEditUser}
+                      onDelete={handleDeleteUser}
+                    />
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+
+                {/* Desktop: Table */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Full Name</TableHead>
+                        <TableHead>Position</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {user.username}
+                          </TableCell>
+                          <TableCell>{user.full_name}</TableCell>
+                          <TableCell>{user.position}</TableCell>
+                          <TableCell>
+                            <Badge variant={badgeVariant(user.role)}>
+                              {roles.find((r) => r.value === user.role)
+                                ?.label || user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.is_active ? (
+                              <div className="flex items-center gap-2 text-green-600">
+                                <ShieldCheck className="h-4 w-4" />
+                                <span className="text-sm">Active</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-red-600">
+                                <ShieldOff className="h-4 w-4" />
+                                <span className="text-sm">Inactive</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleEditUser(user)}
+                              title="Edit user"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={!user.is_active}
+                              title="Deactivate user"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingUser ? "Edit User" : "Add New User"}
@@ -501,7 +626,7 @@ export default function UserManagement() {
                   {...form.register("username", {
                     required: "Username is required",
                   })}
-                  disabled={!!editingUser} // Disable username edit
+                  disabled={!!editingUser}
                 />
                 {form.formState.errors.username && (
                   <p className="text-sm text-red-500">
@@ -512,7 +637,12 @@ export default function UserManagement() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Password {editingUser && "(leave blank to keep current)"}
+                  Password{" "}
+                  {editingUser && (
+                    <span className="text-muted-foreground font-normal">
+                      (leave blank to keep current)
+                    </span>
+                  )}
                 </label>
                 <Input
                   type="password"
@@ -560,55 +690,61 @@ export default function UserManagement() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
-                <Select
-                  onValueChange={(v) =>
-                    form.setValue("role", v as UserRole)
-                  }
-                  defaultValue={form.getValues("role")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Role & Status side by side on larger screens */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Role</label>
+                  <Select
+                    onValueChange={(v) => form.setValue("role", v as UserRole)}
+                    defaultValue={form.getValues("role")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    onValueChange={(v) =>
+                      form.setValue("is_active", v as "active" | "inactive")
+                    }
+                    defaultValue={form.getValues("is_active")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  onValueChange={(v) =>
-                    form.setValue("is_active", v as "active" | "inactive")
-                  }
-                  defaultValue={form.getValues("is_active")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <DialogFooter>
+              <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
                   disabled={isSubmitting}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto"
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

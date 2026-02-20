@@ -36,30 +36,23 @@ import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://barangayfinancetrackbackenddeployment.onrender.com/api";
 
 type DfurProject = {
   id: number;
-
   transaction_id: string;
   transaction_date: string | null;
-
   project: string;
   name_of_collection: string;
   location: string;
-
   total_cost_approved: string;
   total_cost_incurred: string;
-
   date_started: string | null;
   target_completion_date: string | null;
   no_extensions: number;
-
   status: string;
-
   review_status: "pending" | "approved" | "flagged";
   review_comment?: string;
-
   remarks?: string;
 };
 
@@ -118,13 +111,9 @@ const formatStatusDisplay = (status: string) => {
 };
 
 export default function ApproverDFUR() {
-  const [selectedProject, setSelectedProject] = useState<DfurProject | null>(
-    null,
-  );
+  const [selectedProject, setSelectedProject] = useState<DfurProject | null>(null);
   const [viewProject, setViewProject] = useState<DfurProject | null>(null);
-  const [reviewAction, setReviewAction] = useState<
-    "approved" | "flagged" | null
-  >(null);
+  const [reviewAction, setReviewAction] = useState<"approved" | "flagged" | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const { toast } = useToast();
 
@@ -133,9 +122,7 @@ export default function ApproverDFUR() {
     queryKey: ["dfur-projects"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/get-dfur-project`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch DFUR projects");
-      }
+      if (!response.ok) throw new Error("Failed to fetch DFUR projects");
       return response.json();
     },
   });
@@ -145,9 +132,7 @@ export default function ApproverDFUR() {
     queryKey: ["dfur-total-data"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/get-total-data-dfur-project`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch total data");
-      }
+      if (!response.ok) throw new Error("Failed to fetch total data");
       return response.json();
     },
   });
@@ -157,36 +142,22 @@ export default function ApproverDFUR() {
   // Approve project mutation
   const approveProject = useMutation({
     mutationFn: async ({ id }: { id: number }) => {
-      const payload = {
-        dfur_id: id,
-        review_status: "approved",
-        approval_type: "dfur",
-      };
-
+      const payload = { dfur_id: id, review_status: "approved", approval_type: "dfur" };
       const response = await fetch(`${API_BASE_URL}/put-approval`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || "Failed to approve project. Please try again.",
-        );
+        throw new Error(errorData.message || "Failed to approve project. Please try again.");
       }
-
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
-      toast({
-        title: "Project Approved",
-        description: "DFUR project has been approved successfully.",
-      });
+      toast({ title: "Project Approved", description: "DFUR project has been approved successfully." });
       setSelectedProject(null);
       setReviewAction(null);
       setReviewComment("");
@@ -195,55 +166,36 @@ export default function ApproverDFUR() {
       toast({
         variant: "destructive",
         title: "Error Approving Project",
-        description:
-          error.message || "Failed to approve project. Please try again.",
+        description: error.message || "Failed to approve project. Please try again.",
       });
     },
   });
 
   // Flag project mutation
   const flagProject = useMutation({
-    mutationFn: async ({
-      id,
-      comment,
-    }: {
-      id: number;
-      comment: string;
-    }) => {
-      // Get user ID from localStorage or auth context
+    mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
       const reviewedBy = localStorage.getItem("user_id") || "1";
-
       const payload = {
         dfur_id: id,
         reviewed_by: parseInt(reviewedBy),
-        comment: comment,
+        comment,
         flag_type: "dfur",
       };
-
       const response = await fetch(`${API_BASE_URL}/put-flag-comment`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || "Failed to flag project. Please try again.",
-        );
+        throw new Error(errorData.message || "Failed to flag project. Please try again.");
       }
-
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
-      toast({
-        title: "Project Flagged",
-        description: "DFUR project has been flagged for review.",
-      });
+      toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
       setSelectedProject(null);
       setReviewAction(null);
       setReviewComment("");
@@ -252,15 +204,13 @@ export default function ApproverDFUR() {
       toast({
         variant: "destructive",
         title: "Error Flagging Project",
-        description:
-          error.message || "Failed to flag project. Please try again.",
+        description: error.message || "Failed to flag project. Please try again.",
       });
     },
   });
 
   const handleReview = () => {
     if (!selectedProject || !reviewAction) return;
-
     if (reviewAction === "approved") {
       approveProject.mutate({ id: selectedProject.id });
     } else if (reviewAction === "flagged") {
@@ -272,10 +222,7 @@ export default function ApproverDFUR() {
         });
         return;
       }
-      flagProject.mutate({
-        id: selectedProject.id,
-        comment: reviewComment.trim(),
-      });
+      flagProject.mutate({ id: selectedProject.id, comment: reviewComment.trim() });
     }
   };
 
@@ -286,457 +233,438 @@ export default function ApproverDFUR() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
-    
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return "N/A";
-      }
+      if (isNaN(date.getTime())) return "N/A";
       return format(date, "MMM dd, yyyy");
-    } catch (error) {
+    } catch {
       return "N/A";
     }
   };
 
+  // Mobile project card
+  const ProjectCard = ({ project }: { project: DfurProject }) => (
+    <div
+      className="rounded-lg border bg-white p-4 space-y-3"
+      data-testid={`row-dfur-${project.id}`}
+    >
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-snug line-clamp-2">{project.project}</p>
+          <p className="text-xs font-mono text-muted-foreground mt-0.5">{project.transaction_id}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge className={getReviewStatusColor(project.review_status)} variant="outline">
+            {project.review_status === "pending" ? "Pending" : project.review_status === "approved" ? "Approved" : "Flagged"}
+          </Badge>
+          <Badge className={getStatusColor(project.status)} variant="outline">
+            {formatStatusDisplay(project.status)}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Detail rows */}
+      <div className="space-y-1.5 text-sm">
+        <div className="flex justify-between gap-2">
+          <span className="text-muted-foreground shrink-0">Nature:</span>
+          <span className="text-right truncate max-w-[60%]">{project.name_of_collection}</span>
+        </div>
+        <div className="flex justify-between gap-2 pt-1 border-t">
+          <span className="text-muted-foreground shrink-0">Approved Cost:</span>
+          <span className="font-semibold text-right">{formatCurrency(project.total_cost_approved)}</span>
+        </div>
+        <div className="flex justify-between gap-2">
+          <span className="text-muted-foreground shrink-0">Incurred Cost:</span>
+          <span className="text-right">{formatCurrency(project.total_cost_incurred)}</span>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 touch-manipulation"
+          onClick={() => setViewProject(project)}
+          data-testid={`button-view-${project.id}`}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          View
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 text-green-600 border-green-300 hover:bg-green-50 touch-manipulation"
+          onClick={() => { setSelectedProject(project); setReviewAction("approved"); }}
+          disabled={project.review_status === "approved"}
+          data-testid={`button-approve-${project.id}`}
+        >
+          <CheckCircle2 className="h-4 w-4 mr-1" />
+          Approve
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 text-red-600 border-red-300 hover:bg-red-50 touch-manipulation"
+          onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
+          disabled={project.review_status === "approved"}
+          data-testid={`button-flag-${project.id}`}
+        >
+          <Flag className="h-4 w-4 mr-1" />
+          Flag
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <ApproverLayout>
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground font-poppins">
+        <div className="space-y-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
             Development Fund Utilization Report (DFUR)
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Review and approve DFUR projects
-          </p>
+          <p className="text-sm sm:text-base text-muted-foreground">Review and approve DFUR projects</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-6 md:grid-cols-4">
+        {/* Summary Cards — 2 cols on mobile, 4 on md+ */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
           <Card className="bg-gradient-to-br from-chart-1/5 to-chart-1/10 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-poppins text-base">
-                <FolderKanban className="h-5 w-5 text-chart-1" />
-                Total Projects
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="flex items-center gap-2 font-poppins text-xs sm:text-base">
+                <FolderKanban className="h-4 w-4 sm:h-5 sm:w-5 text-chart-1 shrink-0" />
+                <span className="leading-tight">Total Projects</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p
-                className="text-4xl font-bold text-foreground"
-                data-testid="text-total-projects"
-              >
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <p className="text-3xl sm:text-4xl font-bold text-foreground" data-testid="text-total-projects">
                 {totalData?.total_data || 0}
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-yellow-500/5 to-yellow-500/10 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-poppins text-base">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                Pending
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="flex items-center gap-2 font-poppins text-xs sm:text-base">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 shrink-0" />
+                <span className="leading-tight">Pending</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p
-                className="text-4xl font-bold text-foreground"
-                data-testid="text-pending-projects"
-              >
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <p className="text-3xl sm:text-4xl font-bold text-foreground" data-testid="text-pending-projects">
                 {totalData?.total_pending || 0}
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-green-500/5 to-green-500/10 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-poppins text-base">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                Approved
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="flex items-center gap-2 font-poppins text-xs sm:text-base">
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 shrink-0" />
+                <span className="leading-tight">Approved</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p
-                className="text-4xl font-bold text-foreground"
-                data-testid="text-approved-projects"
-              >
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <p className="text-3xl sm:text-4xl font-bold text-foreground" data-testid="text-approved-projects">
                 {totalData?.total_approved || 0}
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-red-500/5 to-red-500/10 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-poppins text-base">
-                <Flag className="h-5 w-5 text-red-600" />
-                Flagged
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="flex items-center gap-2 font-poppins text-xs sm:text-base">
+                <Flag className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 shrink-0" />
+                <span className="leading-tight">Flagged</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p
-                className="text-4xl font-bold text-foreground"
-                data-testid="text-flagged-projects"
-              >
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <p className="text-3xl sm:text-4xl font-bold text-foreground" data-testid="text-flagged-projects">
                 {totalData?.total_flagged || 0}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Projects Table */}
+        {/* Projects Table / Card List */}
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-poppins">DFUR Projects Review</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="font-poppins text-base sm:text-lg">DFUR Projects Review</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-12 bg-muted rounded animate-pulse"
-                  />
+                  <div key={i} className="h-12 bg-muted rounded animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Transaction ID</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Nature</TableHead>
-                      <TableHead className="text-right">
-                        Approved Cost
-                      </TableHead>
-                      <TableHead className="text-right">
-                        Incurred Cost
-                      </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Review Status</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {!projects || projects.length === 0 ? (
+              <>
+                {/* Mobile: card list */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {!projects || projects.length === 0 ? (
+                    <p className="text-center py-8 text-muted-foreground text-sm">No DFUR projects found</p>
+                  ) : (
+                    projects.map((project) => (
+                      <ProjectCard key={project.id} project={project} />
+                    ))
+                  )}
+                </div>
+
+                {/* Desktop: table */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className="text-center py-8 text-muted-foreground"
-                        >
-                          No DFUR projects found
-                        </TableCell>
+                        <TableHead>Transaction ID</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Nature</TableHead>
+                        <TableHead className="text-right">Approved Cost</TableHead>
+                        <TableHead className="text-right">Incurred Cost</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Review Status</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      projects.map((project) => (
-                        <TableRow
-                          key={project.id}
-                          data-testid={`row-dfur-${project.id}`}
-                        >
-                          <TableCell className="font-mono text-sm">
-                            {project.transaction_id}
-                          </TableCell>
-                          <TableCell className="font-medium max-w-[200px] truncate">
-                            {project.project}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {project.name_of_collection}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(project.total_cost_approved)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(project.total_cost_incurred)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={getStatusColor(project.status)}
-                              variant="outline"
-                            >
-                              {formatStatusDisplay(project.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={getReviewStatusColor(
-                                project.review_status,
-                              )}
-                              variant="outline"
-                            >
-                              {project.review_status === "pending"
-                                ? "Pending"
-                                : project.review_status === "approved"
-                                  ? "Approved"
-                                  : "Flagged"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setViewProject(project)}
-                                data-testid={`button-view-${project.id}`}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-green-600 border-green-300 hover:bg-green-50"
-                                onClick={() => {
-                                  setSelectedProject(project);
-                                  setReviewAction("approved");
-                                }}
-                                disabled={project.review_status === "approved"}
-                                data-testid={`button-approve-${project.id}`}
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedProject(project);
-                                  setReviewAction("flagged");
-                                }}
-                                disabled={project.review_status === "approved"}
-                                data-testid={`button-flag-${project.id}`}
-                              >
-                                <Flag className="h-4 w-4 mr-1" />
-                                Flag
-                              </Button>
-                            </div>
+                    </TableHeader>
+                    <TableBody>
+                      {!projects || projects.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No DFUR projects found
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                      ) : (
+                        projects.map((project) => (
+                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`}>
+                            <TableCell className="font-mono text-sm">{project.transaction_id}</TableCell>
+                            <TableCell className="font-medium max-w-[200px] truncate">{project.project}</TableCell>
+                            <TableCell className="text-sm">{project.name_of_collection}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(project.total_cost_approved)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(project.total_cost_incurred)}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(project.status)} variant="outline">
+                                {formatStatusDisplay(project.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getReviewStatusColor(project.review_status)} variant="outline">
+                                {project.review_status === "pending" ? "Pending" : project.review_status === "approved" ? "Approved" : "Flagged"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2 justify-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setViewProject(project)}
+                                  data-testid={`button-view-${project.id}`}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-green-600 border-green-300 hover:bg-green-50"
+                                  onClick={() => { setSelectedProject(project); setReviewAction("approved"); }}
+                                  disabled={project.review_status === "approved"}
+                                  data-testid={`button-approve-${project.id}`}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                  onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
+                                  disabled={project.review_status === "approved"}
+                                  data-testid={`button-flag-${project.id}`}
+                                >
+                                  <Flag className="h-4 w-4 mr-1" />
+                                  Flag
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
+      </div>
 
-        {/* View Project Dialog */}
-        <Dialog
-          open={!!viewProject}
-          onOpenChange={(open) => !open && setViewProject(null)}
-        >
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="font-poppins">
-                Project Details
-              </DialogTitle>
-            </DialogHeader>
-            {viewProject && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Transaction ID
-                    </p>
-                    <p className="font-mono font-medium">
-                      {viewProject.transaction_id}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Transaction Date
-                    </p>
-                    <p className="font-medium">
-                      {formatDate(viewProject.transaction_date)}
-                    </p>
-                  </div>
+      {/* View Project Dialog */}
+      <Dialog open={!!viewProject} onOpenChange={(open) => !open && setViewProject(null)}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[600px] rounded-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-poppins text-base sm:text-lg">Project Details</DialogTitle>
+          </DialogHeader>
+          {viewProject && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Transaction ID</p>
+                  <p className="font-mono font-medium break-all">{viewProject.transaction_id}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Project</p>
-                  <p className="font-medium">{viewProject.project}</p>
+                  <p className="text-xs text-muted-foreground">Transaction Date</p>
+                  <p className="font-medium">{formatDate(viewProject.transaction_date)}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Nature of Collection
-                    </p>
-                    <p className="font-medium">
-                      {viewProject.name_of_collection}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Location</p>
-                    <p className="font-medium">{viewProject.location}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Total Cost Approved
-                    </p>
-                    <p className="font-semibold text-lg">
-                      {formatCurrency(viewProject.total_cost_approved)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Total Cost Incurred
-                    </p>
-                    <p className="font-semibold text-lg">
-                      {formatCurrency(viewProject.total_cost_incurred)}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Date Started
-                    </p>
-                    <p className="font-medium">
-                      {formatDate(viewProject.date_started)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Target Completion
-                    </p>
-                    <p className="font-medium">
-                      {formatDate(viewProject.target_completion_date)}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge
-                      className={getStatusColor(viewProject.status)}
-                      variant="outline"
-                    >
-                      {formatStatusDisplay(viewProject.status)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      No. of Extensions
-                    </p>
-                    <p className="font-medium">
-                      {viewProject.no_extensions}
-                    </p>
-                  </div>
-                </div>
-                {viewProject.remarks && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Remarks</p>
-                    <p className="font-medium">{viewProject.remarks}</p>
-                  </div>
-                )}
-                {viewProject.review_comment && (
-                  <div className="bg-muted p-4 rounded-md">
-                    <p className="text-sm text-muted-foreground">
-                      Review Comment
-                    </p>
-                    <p className="font-medium">{viewProject.review_comment}</p>
-                  </div>
-                )}
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Review Project Dialog */}
-        <Dialog
-          open={!!selectedProject && !!reviewAction}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedProject(null);
-              setReviewAction(null);
-              setReviewComment("");
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="font-poppins">
-                {reviewAction === "approved"
-                  ? "Approve Project"
-                  : "Flag Project for Review"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {selectedProject && (
-                <div className="bg-muted p-4 rounded-md">
-                  <p className="text-sm text-muted-foreground">Project</p>
-                  <p className="font-medium">{selectedProject.project}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Transaction ID
-                  </p>
-                  <p className="font-mono text-sm">
-                    {selectedProject.transaction_id}
-                  </p>
+              <div>
+                <p className="text-xs text-muted-foreground">Project</p>
+                <p className="font-medium">{viewProject.project}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Nature of Collection</p>
+                  <p className="font-medium">{viewProject.name_of_collection}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="font-medium">{viewProject.location}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Cost Approved</p>
+                  <p className="font-semibold text-base sm:text-lg">{formatCurrency(viewProject.total_cost_approved)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Cost Incurred</p>
+                  <p className="font-semibold text-base sm:text-lg">{formatCurrency(viewProject.total_cost_incurred)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Date Started</p>
+                  <p className="font-medium">{formatDate(viewProject.date_started)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Target Completion</p>
+                  <p className="font-medium">{formatDate(viewProject.target_completion_date)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={getStatusColor(viewProject.status)} variant="outline">
+                    {formatStatusDisplay(viewProject.status)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">No. of Extensions</p>
+                  <p className="font-medium">{viewProject.no_extensions}</p>
+                </div>
+              </div>
+              {viewProject.remarks && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Remarks</p>
+                  <p className="font-medium">{viewProject.remarks}</p>
                 </div>
               )}
-              <div>
-                <label className="text-sm font-medium">
-                  Comment{" "}
-                  {reviewAction === "flagged" && (
-                    <span className="text-destructive">*</span>
-                  )}
-                </label>
-                <Textarea
-                  placeholder={
-                    reviewAction === "approved"
-                      ? "Add an optional comment..."
-                      : "Explain why this project is being flagged..."
-                  }
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  rows={4}
-                  className="mt-1"
-                  data-testid="input-review-comment"
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedProject(null);
-                    setReviewAction(null);
-                    setReviewComment("");
-                  }}
-                  data-testid="button-cancel-review"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleReview}
-                  disabled={
-                    (approveProject.isPending || flagProject.isPending) ||
-                    (reviewAction === "flagged" && !reviewComment.trim())
-                  }
-                  variant={
-                    reviewAction === "approved" ? "default" : "destructive"
-                  }
-                  data-testid="button-confirm-review"
-                >
-                  {reviewAction === "approved" ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {approveProject.isPending
-                        ? "Approving..."
-                        : "Approve Project"}
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                      {flagProject.isPending ? "Flagging..." : "Flag Project"}
-                    </>
-                  )}
-                </Button>
-              </div>
+              {viewProject.review_comment && (
+                <div className="bg-muted p-3 sm:p-4 rounded-md">
+                  <p className="text-xs text-muted-foreground">Review Comment</p>
+                  <p className="font-medium mt-1">{viewProject.review_comment}</p>
+                </div>
+              )}
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Project Dialog */}
+      <Dialog
+        open={!!selectedProject && !!reviewAction}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedProject(null);
+            setReviewAction(null);
+            setReviewComment("");
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[500px] rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="font-poppins text-base sm:text-lg">
+              {reviewAction === "approved" ? "Approve Project" : "Flag Project for Review"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedProject && (
+              <div className="bg-muted p-3 sm:p-4 rounded-md">
+                <p className="text-xs text-muted-foreground">Project</p>
+                <p className="font-medium text-sm mt-0.5">{selectedProject.project}</p>
+                <p className="text-xs text-muted-foreground mt-2">Transaction ID</p>
+                <p className="font-mono text-xs mt-0.5">{selectedProject.transaction_id}</p>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium">
+                Comment{" "}
+                {reviewAction === "flagged" && <span className="text-destructive">*</span>}
+              </label>
+              <Textarea
+                placeholder={
+                  reviewAction === "approved"
+                    ? "Add an optional comment..."
+                    : "Explain why this project is being flagged..."
+                }
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                rows={4}
+                className="mt-1"
+                data-testid="input-review-comment"
+              />
+            </div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  setSelectedProject(null);
+                  setReviewAction(null);
+                  setReviewComment("");
+                }}
+                data-testid="button-cancel-review"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReview}
+                disabled={
+                  approveProject.isPending ||
+                  flagProject.isPending ||
+                  (reviewAction === "flagged" && !reviewComment.trim())
+                }
+                variant={reviewAction === "approved" ? "default" : "destructive"}
+                className="w-full sm:w-auto"
+                data-testid="button-confirm-review"
+              >
+                {reviewAction === "approved" ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {approveProject.isPending ? "Approving..." : "Approve Project"}
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    {flagProject.isPending ? "Flagging..." : "Flag Project"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </ApproverLayout>
   );
 }

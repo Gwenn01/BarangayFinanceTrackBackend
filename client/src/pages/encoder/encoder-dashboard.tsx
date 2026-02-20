@@ -39,55 +39,60 @@ const encoderModules = [
 export default function EncoderDashboard() {
   return (
     <EncoderLayout>
-      <div className="p-8 space-y-6">
+      <div className="p-4 md:p-8 space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-poppins">Encoder Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Select a module to begin encoding financial data</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground font-poppins">
+            Encoder Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+            Select a module to begin encoding financial data
+          </p>
         </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {encoderModules.map((module) => {
-          const Icon = module.icon;
-          return (
-            <Link key={module.id} href={module.url}>
-              <Card 
-                className={`cursor-pointer hover-elevate active-elevate-2 border-2 border-card-border hover:border-primary/50 bg-gradient-to-br ${module.color} h-full`}
-                data-testid={`card-module-${module.id}`}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`rounded-lg bg-background/80 p-3`}>
-                      <Icon className={`h-8 w-8 ${module.iconColor}`} />
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+          {encoderModules.map((module) => {
+            const Icon = module.icon;
+            return (
+              <Link key={module.id} href={module.url}>
+                <Card
+                  className={`cursor-pointer hover-elevate active-elevate-2 border-2 border-card-border hover:border-primary/50 bg-gradient-to-br ${module.color} h-full`}
+                  data-testid={`card-module-${module.id}`}
+                >
+                  <CardHeader className="pb-2 md:pb-4">
+                    <div className="flex items-center justify-between mb-2 md:mb-3">
+                      <div className="rounded-lg bg-background/80 p-2 md:p-3">
+                        <Icon className={`h-6 w-6 md:h-8 md:w-8 ${module.iconColor}`} />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground bg-background/50 px-2 md:px-3 py-1 rounded-full">
+                        {module.abbreviation}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-muted-foreground bg-background/50 px-3 py-1 rounded-full">
-                      {module.abbreviation}
-                    </span>
-                  </div>
-                  <CardTitle className="font-poppins text-xl">
-                    {module.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {module.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+                    <CardTitle className="font-poppins text-base md:text-xl leading-snug">
+                      {module.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-xs md:text-sm leading-relaxed">
+                      {module.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
 
-      <Card className="bg-muted/50 border-muted-foreground/20">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            <strong>Encoder Role:</strong> You have permission to input and manage financial data entries. 
-            Please ensure all data is accurate and complete before submission. Your entries will be reviewed 
-            by the Checker before final approval.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        <Card className="bg-muted/50 border-muted-foreground/20">
+          <CardContent className="pt-4 md:pt-6">
+            <p className="text-xs md:text-sm text-muted-foreground">
+              <strong>Encoder Role:</strong> You have permission to input and
+              manage financial data entries. Please ensure all data is accurate
+              and complete before submission. Your entries will be reviewed by
+              the Checker before final approval.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </EncoderLayout>
   );
 }

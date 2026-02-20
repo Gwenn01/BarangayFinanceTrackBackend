@@ -17,9 +17,23 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
-import { Users, Activity, LogOut, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  Users,
+  Activity,
+  LogOut,
+  ArrowLeft,
+  Loader2,
+  Menu,
+  X,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { UserMenu } from "../../components/user-menu";
 import logoPath from "../../assets/san_agustin.jpg";
+import { api } from "@/utils/api";
 
 /* =======================
    TYPES
@@ -41,11 +55,10 @@ interface ActivityLog {
 }
 
 /* =======================
-   STATIC DATA
+   CONSTANTS
 ======================= */
-const MOCK_ADMIN_USER = {
-  role: "admin",
-};
+const MOCK_ADMIN_USER = { role: "admin" };
+const ROWS_PER_PAGE = 10;
 
 /* =======================
    LAYOUT
@@ -57,97 +70,304 @@ interface AdminLayoutProps {
 
 function AdminLayout({ children, currentPage }: AdminLayoutProps) {
   const [, setLocation] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = MOCK_ADMIN_USER;
 
-  const handleLogout = () => {
-    setLocation("/login");
-  };
+  const handleLogout = () => setLocation("/login");
 
   if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
     setLocation("/login");
     return null;
   }
 
+  const SidebarContent = () => (
+    <>
+      <div className="p-4 border-b bg-background sticky top-0 z-10">
+        <div className="flex items-center gap-3 mb-3">
+          <img
+            src={logoPath}
+            alt="Barangay San Agustin Logo"
+            className="h-12 w-12 rounded-full object-cover flex-shrink-0"
+          />
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold font-poppins truncate">
+              Barangay San Agustin
+            </h2>
+            <p className="text-xs text-muted-foreground truncate">
+              Financial Monitoring System
+            </p>
+            <p className="text-xs text-muted-foreground">Iba, Zambales</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-3 border-b">
+        <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
+        <p className="text-xs text-muted-foreground">
+          {currentPage === "users" ? "User Management" : "Activity Log"}
+        </p>
+      </div>
+
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        <Link href="/admin/users">
+          <div
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer ${
+              currentPage === "users" ? "bg-blue-600 text-white" : "hover:bg-muted"
+            }`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <Users className="h-4 w-4 flex-shrink-0" />
+            Users
+          </div>
+        </Link>
+
+        <Link href="/admin/activity-log">
+          <div
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer ${
+              currentPage === "activity" ? "bg-blue-600 text-white" : "hover:bg-muted"
+            }`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <Activity className="h-4 w-4 flex-shrink-0" />
+            Activity Log
+          </div>
+        </Link>
+
+        <div className="border-t my-3" />
+
+        <Link href="/">
+          <div
+            className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md cursor-pointer"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
+            Back to Main Page
+          </div>
+        </Link>
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 text-destructive hover:bg-destructive/10 rounded-md w-full"
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          Logout
+        </button>
+      </nav>
+
+      <div className="border-t p-3 flex items-center justify-start">
+        <UserMenu />
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-64 border-r bg-card flex flex-col overflow-y-auto">
-        <div className="p-4 border-b bg-background sticky top-0 z-10">
-          <div className="flex items-center gap-3 mb-3">
-            <img
-              src={logoPath}
-              alt="Barangay San Agustin Logo"
-              className="h-12 w-12 rounded-full object-cover"
-            />
-            <div>
-              <h2 className="text-sm font-bold font-poppins">
-                Barangay San Agustin
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Financial Monitoring System
-              </p>
-              <p className="text-xs text-muted-foreground">Iba, Zambales</p>
-            </div>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 border-r bg-card flex-col overflow-y-auto flex-shrink-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-64 z-50 bg-card border-r flex flex-col overflow-y-auto transition-transform duration-300 md:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-end p-2 border-b">
+          <Button size="icon" variant="ghost" onClick={() => setSidebarOpen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <SidebarContent />
+      </aside>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Top Bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-card flex-shrink-0">
+          <Button size="icon" variant="ghost" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={logoPath} alt="Barangay Logo" className="h-8 w-8 rounded-full flex-shrink-0" />
+            <span className="text-sm font-bold truncate">Activity Log</span>
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b">
-          <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
-          <p className="text-xs text-muted-foreground">
-            {currentPage === "users" ? "User Management" : "Activity Log"}
-          </p>
+        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+/* =======================
+   HELPERS
+======================= */
+const getTypeBadge = (type: string) => {
+  const map: Record<string, string> = {
+    collection: "bg-green-600 text-white",
+    disbursement: "bg-orange-600 text-white",
+    budget_entry: "bg-blue-600 text-white",
+    dfur: "bg-purple-600 text-white",
+  };
+  return map[type] ?? "bg-gray-400 text-white";
+};
+
+const getStatusBadge = (status: StatusKey) => {
+  const map: Record<StatusKey, string> = {
+    pending: "bg-gray-400 text-white",
+    approved: "bg-green-600 text-white",
+    flagged: "bg-red-600 text-white",
+  };
+  return map[status];
+};
+
+const formatCurrency = (value: string) => {
+  const num = parseFloat(value);
+  return `₱${num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const formatDate = (date: string) =>
+  date
+    ? new Date(date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })
+    : "N/A";
+
+/* =======================
+   MOBILE ACTIVITY CARD
+======================= */
+function ActivityCard({ activity }: { activity: ActivityLog }) {
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-mono text-xs text-muted-foreground truncate">
+          {activity.transactionId}
+        </span>
+        <Badge className={`${getStatusBadge(activity.status)} text-xs flex-shrink-0`}>
+          {activity.status}
+        </Badge>
+      </div>
+
+      <p className="text-sm font-medium leading-snug line-clamp-2">
+        {activity.description || "—"}
+      </p>
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <Badge className={`${getTypeBadge(activity.type)} text-xs`}>
+          {activity.type.replace("_", " ")}
+        </Badge>
+        {activity.category && (
+          <span className="text-xs text-muted-foreground truncate">{activity.category}</span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{formatDate(activity.date)}</span>
+        <span className="text-sm font-semibold">{formatCurrency(activity.amount)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* =======================
+   PAGINATION
+======================= */
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}
+
+function Pagination({ currentPage, totalPages, totalItems, onPageChange }: PaginationProps) {
+  const startItem = (currentPage - 1) * ROWS_PER_PAGE + 1;
+  const endItem = Math.min(currentPage * ROWS_PER_PAGE, totalItems);
+
+  const getPageNumbers = (): (number | "ellipsis")[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | "ellipsis")[] = [1];
+    if (currentPage > 3) pages.push("ellipsis");
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push("ellipsis");
+    pages.push(totalPages);
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-4 border-t mt-2">
+      {/* Count label */}
+      <p className="text-xs text-muted-foreground order-2 sm:order-1">
+        Showing{" "}
+        <span className="font-medium text-foreground">{startItem}–{endItem}</span>
+        {" "}of{" "}
+        <span className="font-medium text-foreground">{totalItems}</span> transactions
+      </p>
+
+      {/* Buttons */}
+      <div className="flex items-center gap-1 order-1 sm:order-2">
+        <Button
+          size="icon" variant="outline" className="h-8 w-8"
+          onClick={() => onPageChange(1)} disabled={currentPage === 1} title="First page"
+        >
+          <ChevronsLeft className="h-3.5 w-3.5" />
+        </Button>
+
+        <Button
+          size="icon" variant="outline" className="h-8 w-8"
+          onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} title="Previous page"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+
+        {/* Page numbers — hidden on xs */}
+        <div className="hidden sm:flex items-center gap-1">
+          {getPageNumbers().map((page, idx) =>
+            page === "ellipsis" ? (
+              <span key={`e-${idx}`} className="px-1.5 text-muted-foreground text-sm select-none">…</span>
+            ) : (
+              <Button
+                key={page}
+                size="icon"
+                variant={page === currentPage ? "default" : "outline"}
+                className="h-8 w-8 text-xs"
+                onClick={() => onPageChange(page as number)}
+              >
+                {page}
+              </Button>
+            )
+          )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <Link href="/admin/users">
-            <div
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md ${
-                currentPage === "users"
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-muted"
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              Users
-            </div>
-          </Link>
+        {/* Compact label on very small screens */}
+        <span className="sm:hidden text-sm font-medium px-2 select-none">
+          {currentPage} / {totalPages}
+        </span>
 
-          <Link href="/admin/activity-log">
-            <div
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md ${
-                currentPage === "activity"
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-muted"
-              }`}
-            >
-              <Activity className="h-4 w-4" />
-              Activity Log
-            </div>
-          </Link>
+        <Button
+          size="icon" variant="outline" className="h-8 w-8"
+          onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} title="Next page"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
 
-          <div className="border-t my-3" />
-
-          <Link href="/">
-            <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Main Page
-            </div>
-          </Link>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 text-destructive hover:bg-destructive/10 rounded-md w-full"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
-        </nav>
-
-        <div className="border-t p-3 flex items-center justify-start">
-          <UserMenu />
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+        <Button
+          size="icon" variant="outline" className="h-8 w-8"
+          onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} title="Last page"
+        >
+          <ChevronsRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -159,6 +379,7 @@ export default function ActivityLogPage() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchActivityLogs();
@@ -168,24 +389,21 @@ export default function ActivityLogPage() {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch("http://127.0.0.1:5000/api/get-all-docs");
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      setCurrentPage(1);
+
+      const response = await fetch("https://barangayfinancetrackbackenddeployment.onrender.com/api/get-all-docs");
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
       const data = await response.json();
-      
-      // Transform API data to match ActivityLog interface
+
       const transformedData: ActivityLog[] = data.map((item: any) => {
-        // Determine transaction type based on transaction_id prefix
         let type = "collection";
         let description = "";
         let category = "";
         let amount = "0.00";
         let date = "";
-        
+
         if (item.transaction_id?.startsWith("COLL-")) {
           type = "collection";
           description = item.nature_of_collection || "Collection";
@@ -211,17 +429,11 @@ export default function ActivityLogPage() {
           amount = item.total_cost_incurred || item.total_cost_approved || "0.00";
           date = item.transaction_date || item.created_at;
         }
-        
-        // Determine status based on review_status and is_flagged
+
         let status: StatusKey = "pending";
-        if (item.review_status === "approved") {
-          status = "approved";
-        } else if (item.is_flagged === 1) {
-          status = "flagged";
-        } else if (item.review_status === "pending") {
-          status = "pending";
-        }
-        
+        if (item.review_status === "approved") status = "approved";
+        else if (item.is_flagged === 1) status = "flagged";
+
         return {
           id: String(item.id),
           transactionId: item.transaction_id || "N/A",
@@ -236,14 +448,11 @@ export default function ActivityLogPage() {
           reviewComment: item.review_comment,
         };
       });
-      
-      // Sort by date (newest first)
-      transformedData.sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        return dateB - dateA;
-      });
-      
+
+      transformedData.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
       setActivityLogs(transformedData);
     } catch (err) {
       console.error("Error fetching activity logs:", err);
@@ -253,126 +462,123 @@ export default function ActivityLogPage() {
     }
   };
 
-  const formatCurrency = (value: string) => {
-    const num = parseFloat(value);
-    return `₱${num.toLocaleString("en-PH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(activityLogs.length / ROWS_PER_PAGE));
+  const paginatedLogs = activityLogs.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
 
-  const getTypeBadge = (type: string) => {
-    const map: Record<string, string> = {
-      collection: "bg-green-600 text-white",
-      disbursement: "bg-orange-600 text-white",
-      budget_entry: "bg-blue-600 text-white",
-      dfur: "bg-purple-600 text-white",
-    };
-    return map[type] ?? "bg-gray-400 text-white";
-  };
-
-  const getStatusBadge = (status: StatusKey) => {
-    const map: Record<StatusKey, string> = {
-      pending: "bg-gray-400 text-white",
-      approved: "bg-green-600 text-white",
-      flagged: "bg-red-600 text-white",
-    };
-    return map[status];
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <AdminLayout currentPage="activity">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold font-poppins">Activity Log</h1>
-          <Button onClick={fetchActivityLogs} variant="outline" size="sm">
-            Refresh
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold font-poppins">Activity Log</h1>
+          <Button
+            onClick={fetchActivityLogs}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+            className="flex-shrink-0"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg md:text-xl">Recent Transactions</CardTitle>
             <CardDescription>
               {loading
                 ? "Loading transactions..."
                 : `Showing ${activityLogs.length} transactions`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+
+          <CardContent className="p-0 md:p-6 md:pt-0">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-12 px-4">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <span className="ml-3 text-muted-foreground">
-                  Loading activity logs...
-                </span>
+                <span className="ml-3 text-muted-foreground text-sm">Loading activity logs...</span>
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-destructive font-semibold mb-2">
-                  Error loading data
-                </p>
+              <div className="text-center py-12 px-4">
+                <p className="text-destructive font-semibold mb-2">Error loading data</p>
                 <p className="text-sm text-muted-foreground mb-4">{error}</p>
-                <Button onClick={fetchActivityLogs} variant="outline">
-                  Try Again
-                </Button>
+                <Button onClick={fetchActivityLogs} variant="outline">Try Again</Button>
               </div>
             ) : activityLogs.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground px-4">
                 No transactions found
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Transaction ID</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activityLogs.map((activity) => (
-                      <TableRow key={`${activity.transactionId}-${activity.id}`}>
-                        <TableCell className="font-mono text-xs">
-                          {activity.transactionId}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getTypeBadge(activity.type)}>
-                            {activity.type.replace("_", " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {activity.date
-                            ? new Date(activity.date).toLocaleDateString("en-PH", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {activity.description}
-                        </TableCell>
-                        <TableCell>{activity.category}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatCurrency(activity.amount)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadge(activity.status)}>
-                            {activity.status}
-                          </Badge>
-                        </TableCell>
+              <>
+                {/* Mobile: Card List */}
+                <div className="md:hidden space-y-3 px-4 pt-2">
+                  {paginatedLogs.map((activity) => (
+                    <ActivityCard
+                      key={`${activity.transactionId}-${activity.id}`}
+                      activity={activity}
+                    />
+                  ))}
+                </div>
 
+                {/* Desktop: Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Transaction ID</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedLogs.map((activity) => (
+                        <TableRow key={`${activity.transactionId}-${activity.id}`}>
+                          <TableCell className="font-mono text-xs">
+                            {activity.transactionId}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getTypeBadge(activity.type)}>
+                              {activity.type.replace("_", " ")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(activity.date)}</TableCell>
+                          <TableCell className="max-w-xs truncate">{activity.description}</TableCell>
+                          <TableCell>{activity.category}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(activity.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusBadge(activity.status)}>
+                              {activity.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination — both mobile & desktop */}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={activityLogs.length}
+                  onPageChange={handlePageChange}
+                />
+              </>
             )}
           </CardContent>
         </Card>
