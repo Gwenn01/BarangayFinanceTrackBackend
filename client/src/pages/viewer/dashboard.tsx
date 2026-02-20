@@ -1553,48 +1553,59 @@ export default function ViewerDashboard() {
           </div>
 
           {/* Display Comments */}
-          <div className="mt-12">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <MessageSquare className="w-6 h-6 text-blue-600" />
+          <div className="mt-8 sm:mt-12">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <div className="p-2 sm:p-3 bg-blue-100 rounded-xl shrink-0">
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">Community Comments</h3>
-                <p className="text-sm text-slate-600">Recent feedback from our community</p>
+                <h3 className="text-lg sm:text-2xl font-bold text-slate-900">Community Comments</h3>
+                <p className="text-xs sm:text-sm text-slate-600">Recent feedback from our community</p>
               </div>
             </div>
 
-            <div className="glass-card rounded-3xl p-8 shadow-xl">
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-3 sm:p-8 shadow-xl">
               {isLoadingComments ? (
-                <div className="flex items-center justify-center py-12">
+                <div className="flex items-center justify-center py-10 sm:py-12">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                    <span className="text-slate-500">Loading comments...</span>
+                    <span className="text-slate-500 text-sm">Loading comments...</span>
                   </div>
                 </div>
               ) : comments && comments.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-2.5 sm:space-y-4 text-wrap custom-scrollbar pr-0.5 sm:pr-2">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="p-6 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white font-bold shrink-0">
+                    <div
+                      key={comment.id}
+                      className="p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-white rounded-xl sm:rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 w-full h-auto text-wrap"
+                    >
+                      <div className="flex items-start gap-2.5 sm:gap-3 mb-2 sm:mb-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white font-bold shrink-0 text-xs sm:text-base">
                           {comment.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-slate-900">{comment.name}</h4>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-slate-900 text-sm sm:text-base truncate leading-tight">
+                            {comment.name}
+                          </h4>
                           {comment.email && (
-                            <p className="text-xs text-slate-500">{comment.email}</p>
+                            <p className="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5">
+                              {comment.email}
+                            </p>
                           )}
                         </div>
                       </div>
-                      <p className="text-slate-700 leading-relaxed">{comment.comment}</p>
+                      <div className="flex min-w-0">
+                        <p className="w-full break-words whitespace-normal text-xs sm:text-base text-slate-700">
+                          {comment.comment}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 text-slate-500">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                  <p>No comments yet. Be the first to share your feedback!</p>
+                <div className="text-center py-10 sm:py-12 text-slate-500">
+                  <MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-slate-300" />
+                  <p className="text-sm sm:text-base">No comments yet. Be the first to share your feedback!</p>
                 </div>
               )}
             </div>
