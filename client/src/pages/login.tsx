@@ -170,8 +170,8 @@ export default function Login() {
               <CardTitle className="text-xl font-bold font-poppins tracking-tight text-slate-800 dark:text-slate-100">
                 Barangay San Agustin
               </CardTitle>
-              <CardDescription className="text-emerald-600 dark:text-emerald-400 font-medium text-[11px] uppercase tracking-widest">
-                Financial Monitoring System
+              <CardDescription className="text-emerald-600 dark:text-emerald-400 font-medium text-sm tracking-wider">
+                FundSight System
               </CardDescription>
             </div>
           </div>
