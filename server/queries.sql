@@ -218,13 +218,25 @@ ADD CONSTRAINT fk_disbursements_allocation
 FOREIGN KEY (allocation_id)
 REFERENCES budget_allocations(id);
  
+SHOW TABLES;
 
 SELECT * FROM users;
 SELECT * FROM budget_entries;
+SELECT * FROM budget_allocations;
 SELECT * FROM collections;
 SELECT * FROM disbursements;
 SELECT * FROM dfur_projects;
 SELECT * FROM viewer_comments;
+
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE viewer_comments;
+TRUNCATE TABLE disbursements;
+TRUNCATE TABLE collections;
+TRUNCATE TABLE budget_allocations;
+TRUNCATE TABLE budget_entries;
+TRUNCATE TABLE dfur_projects;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS = 1;
 
 ALTER table viewer_comments
 ADD COLUMN name varchar(255) after comment,
