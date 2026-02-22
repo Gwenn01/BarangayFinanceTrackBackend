@@ -6,7 +6,7 @@ def insert_collection_comment_db(collection_id, reviewed_by, comment):
         query = """
             UPDATE collections
             SET
-                is_flagged = 1,
+                is_flagged = True,
                 review_comment = %s,
                 reviewed_by = %s,
                 reviewed_at = NOW()
@@ -27,7 +27,7 @@ def insert_disbursement_comment_db(disbursement_id, reviewed_by, comment):
     try:
         query = """
             UPDATE disbursements SET
-                is_flagged = 1,
+                is_flagged = True,
                 review_comment = %s,
                 reviewed_by = %s,
                 reviewed_at = NOW()
@@ -49,7 +49,7 @@ def insert_dfur_comment_db(dfur_id, reviewed_by, comment):
         query = """
             UPDATE dfur_projects
             SET
-                is_flagged = 1,
+                is_flagged = True,
                 review_comment = %s,
                 reviewed_by = %s,
                 reviewed_at = NOW()

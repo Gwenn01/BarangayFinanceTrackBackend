@@ -3,6 +3,7 @@ from flask_cors import CORS
 from app.config import Config
 from app.extensions import jwt
 from dotenv import load_dotenv
+from app.database.connection import get_db_connection
 
 load_dotenv()  # load once only
 
@@ -37,5 +38,11 @@ def create_app():
     @app.route("/")
     def health():
         return {"status": "running"}
+    
+    @app.route("/api/test")
+    def test():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
 
     return app

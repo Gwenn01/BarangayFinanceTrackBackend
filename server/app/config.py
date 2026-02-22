@@ -7,11 +7,13 @@ class Config:
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
     SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
 
-    # LOCAL MYSQL (your computer)
-    DB_HOST = os.getenv("DB_HOST")
-    DB_USER = os.getenv("DB_USER")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    DB_NAME = os.getenv("DB_NAME")
-
-    # CLOUD DATABASE (Render)
     DATABASE_URL = os.getenv("DATABASE_URL")
+
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set")
+
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

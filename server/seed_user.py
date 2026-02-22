@@ -6,13 +6,13 @@ def hash_password(password: str) -> str:
 
 
 users = [
-("superadmin","admin123","superadmin","System Administrator","Super Admin",1),
-("kapitan","kapitan123","admin","Barangay Captain","Kapitan",1),
-("secretary","secretary123","admin","Barangay Secretary","Secretary",1),
-("treasurer","treasurer123","encoder","Barangay Treasurer","Treasurer",1),
-("bookkeeper","bookkeeper123","checker","Barangay Bookkeeper","Bookkeeper",1),
-("council1","council123","reviewer","Barangay Councilor 1","Barangay Council",1),
-("approver","approver123","approver","Budget Approver","Kapitan",1)
+("superadmin","admin123","superadmin","System Administrator","Super Admin", True),
+("kapitan","kapitan123","admin","Barangay Captain","Kapitan",True),
+("secretary","secretary123","admin","Barangay Secretary","Secretary",True),
+("treasurer","treasurer123","encoder","Barangay Treasurer","Treasurer", True),
+("bookkeeper","bookkeeper123","checker","Barangay Bookkeeper","Bookkeeper", True),
+("council1","council123","reviewer","Barangay Councilor 1","Barangay Council",True),
+("approver","approver123","approver","Budget Approver","Kapitan",True)
 ]
 
 conn = get_db_connection()
