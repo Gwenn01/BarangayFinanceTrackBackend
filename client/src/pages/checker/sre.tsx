@@ -235,6 +235,9 @@ export default function CheckerSRE() {
       if (!response.ok) throw new Error("Failed to fetch collections");
       return response.json();
     },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   /* Fetch disbursements */
@@ -245,6 +248,9 @@ export default function CheckerSRE() {
       if (!response.ok) throw new Error("Failed to fetch disbursements");
       return response.json();
     },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   /* Flag mutation */

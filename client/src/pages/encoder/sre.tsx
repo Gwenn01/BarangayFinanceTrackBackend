@@ -359,6 +359,9 @@ export default function SRE() {
       if (Array.isArray(data)) return data.map(backendCollectionToFrontend);
       return [];
     },
+    refetchOnMount: true,  
+    refetchOnWindowFocus: true, 
+    refetchOnReconnect: true,  
   });
 
   /* Fetch disbursements */
@@ -371,6 +374,9 @@ export default function SRE() {
       if (Array.isArray(data)) return data.map(backendDisbursementToFrontend);
       return [];
     },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   /* Delete collection */
@@ -380,16 +386,35 @@ export default function SRE() {
         method: "DELETE",
         body: JSON.stringify({ collection_id: parseInt(id) }),
       });
+
       if (result.error) throw new Error(result.error);
-      return result.data;
+      return id;
     },
-    onSuccess: () => {
+
+    onSuccess: (deletedId) => {
+
+      // ✅ instantly remove from UI
+      queryClient.setQueryData(["collections"], (old: Collection[] = []) =>
+        old.filter((item) => item.id !== deletedId)
+      );
+
+      // ✅ also refetch from server to stay synced
       queryClient.invalidateQueries({ queryKey: ["collections"] });
-      toast({ title: "Collection Deleted", description: "Collection transaction has been successfully deleted." });
+
+      toast({
+        title: "Collection Deleted",
+        description: "Collection transaction has been successfully deleted.",
+      });
+
       setDeleteCollectionId(null);
     },
+
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Deleting Collection", description: error.message || "Failed to delete collection. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Collection",
+        description: error.message,
+      });
     },
   });
 
@@ -400,16 +425,35 @@ export default function SRE() {
         method: "DELETE",
         body: JSON.stringify({ disbursement_id: parseInt(id) }),
       });
+
       if (result.error) throw new Error(result.error);
-      return result.data;
+      return id;
     },
-    onSuccess: () => {
+
+    onSuccess: (deletedId) => {
+
+      // ✅ instantly update UI
+      queryClient.setQueryData(["disbursements"], (old: Disbursement[] = []) =>
+        old.filter((item) => item.id !== deletedId)
+      );
+
+      // ✅ ensure backend sync
       queryClient.invalidateQueries({ queryKey: ["disbursements"] });
-      toast({ title: "Disbursement Deleted", description: "Disbursement transaction has been successfully deleted." });
+
+      toast({
+        title: "Disbursement Deleted",
+        description: "Disbursement transaction has been successfully deleted.",
+      });
+
       setDeleteDisbursementId(null);
     },
+
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Deleting Disbursement", description: error.message || "Failed to delete disbursement. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Disbursement",
+        description: error.message,
+      });
     },
   });
 
