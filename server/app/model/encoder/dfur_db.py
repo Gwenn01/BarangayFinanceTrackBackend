@@ -67,7 +67,7 @@ def put_dfur_db(data):
                status = %s,
                no_extensions = %s,
                remarks = %s,
-               is_active = %s
+               is_active = TRUE
            WHERE id = %s;
        """
        params = (
@@ -83,7 +83,6 @@ def put_dfur_db(data):
            data['status'],
            data['no_extensions'],
            data['remarks'],
-           data['is_active'],
            data['id']
        )
        return execute_query(query, params)
