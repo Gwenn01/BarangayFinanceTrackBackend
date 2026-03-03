@@ -275,7 +275,7 @@ def insert_dfur_controller():
 def put_dfur_controller():
     try:
         data = request.get_json()
-        result = put_dfur_db(data)
+       
         if data['status'] == 'Planned':
             data['status'] = 'planned'
         elif data['status'] == 'Completed':
@@ -286,6 +286,8 @@ def put_dfur_controller():
             data['status'] = 'cancelled'
         elif data['status'] == 'In Progress':
             data['status'] = 'in_progress'
+            
+        result = put_dfur_db(data)
         
         if result:
             return jsonify({"message": "Successfully updated data"}), 200
