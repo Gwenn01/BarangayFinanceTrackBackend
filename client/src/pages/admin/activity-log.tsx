@@ -34,6 +34,7 @@ import {
 import { UserMenu } from "../../components/user-menu";
 import logoPath from "../../assets/san_agustin.jpg";
 import { api } from "@/utils/api";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /* =======================
    TYPES
@@ -103,9 +104,6 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
 
       <div className="px-4 py-3 border-b">
         <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
-        <p className="text-xs text-muted-foreground">
-          {currentPage === "users" ? "User Management" : "Activity Log"}
-        </p>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -134,17 +132,6 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         </Link>
 
         <div className="border-t my-3" />
-
-        <Link href="/">
-          <div
-            className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted rounded-md cursor-pointer"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
-            Back to Main Page
-          </div>
-        </Link>
-
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 text-destructive hover:bg-destructive/10 rounded-md w-full"
@@ -154,7 +141,8 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         </button>
       </nav>
 
-      <div className="border-t p-3 flex items-center justify-start">
+      <div className="border-t p-3 flex flex-col items-center justify-start">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </>

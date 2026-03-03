@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import logoPath from "../assets/san_agustin.jpg";
 import { useAuth } from "@/contexts/auth-context";
 import { UserMenu } from "./user-menu";
+import { ThemeToggle } from "./theme-toggle";
 
 const approverModules = [
   {
@@ -120,7 +121,8 @@ export function ApproverLayout({ children }: ApproverLayoutProps) {
         </Button>
       </nav>
 
-      <div className="border-t p-3 flex items-center justify-start">
+      <div className="border-t p-3 flex items-center justify-start flex-col">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </>

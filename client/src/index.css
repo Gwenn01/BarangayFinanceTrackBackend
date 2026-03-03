@@ -124,7 +124,115 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
 
+  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+
+  /* Backgrounds applied on top of other backgrounds when hovered/active */
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 0 0% 7%;
+
+  --foreground: 0 0% 98%;
+
+  --border: 0 0% 18%;
+
+  --card: 0 0% 9%;
+
+  --card-foreground: 0 0% 98%;
+
+  --card-border: 0 0% 14%;
+
+  --sidebar: 0 0% 11%;
+
+  --sidebar-foreground: 0 0% 98%;
+
+  --sidebar-border: 0 0% 16%;
+
+  --sidebar-primary: 160 84% 39%;
+
+  --sidebar-primary-foreground: 160 84% 97%;
+
+  --sidebar-accent: 160 15% 15%;
+
+  --sidebar-accent-foreground: 160 15% 95%;
+
+  --sidebar-ring: 160 84% 39%;
+
+  --popover: 0 0% 13%;
+
+  --popover-foreground: 0 0% 98%;
+
+  --popover-border: 0 0% 19%;
+
+  --primary: 160 84% 39%;
+
+  --primary-foreground: 160 84% 97%;
+
+  --secondary: 0 0% 16%;
+
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 160 10% 14%;
+
+  --muted-foreground: 160 10% 65%;
+
+  --accent: 160 12% 15%;
+
+  --accent-foreground: 160 12% 95%;
+
+  --destructive: 0 72% 51%;
+
+  --destructive-foreground: 0 72% 97%;
+
+  --input: 0 0% 25%;
+  --ring: 160 84% 39%;
+  --chart-1: 160 84% 50%;
+  --chart-2: 173 80% 55%;
+  --chart-3: 217 91% 70%;
+  --chart-4: 142 71% 60%;
+  --chart-5: 24 95% 65%;
+
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.3);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.4);
+  --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.3), 0px 1px 3px 0px hsl(0 0% 0% / 0.4);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.4), 0px 1px 2px -1px hsl(0 0% 0% / 0.4);
+  --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.4), 0px 2px 4px -2px hsl(0 0% 0% / 0.4);
+  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.5), 0px 4px 6px -4px hsl(0 0% 0% / 0.5);
+  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.5), 0px 8px 10px -6px hsl(0 0% 0% / 0.5);
+  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.6);
+
+  /* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
 
 @layer base {
   * {
@@ -157,7 +265,14 @@
     z-index: -1;
   }
   
-
+  .dark body::before {
+    background: linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.82) 50%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+  }
 }
 
 @layer utilities {
@@ -233,4 +348,228 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+}
+
+/* ============================================================
+   DARK MODE — ViewerDashboard
+   Paste this block at the END of your index.css
+   ============================================================ */
+
+/* ── Utility classes used throughout the dashboard ── */
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-card-dark {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 99px;
+  }
+}
+
+/* ── Page root ── */
+.dark .min-h-screen {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* ── Fixed header ── */
+.dark header.fixed {
+  background: rgba(18, 18, 18, 0.92);
+  border-bottom: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 0 hsl(var(--border));
+}
+
+.dark header .gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark header button {
+  border-color: #60a5fa;
+  color: #93c5fd;
+  background: transparent;
+}
+.dark header button:hover {
+  background: rgba(96, 165, 250, 0.12);
+}
+.dark header button svg {
+  color: #60a5fa;
+}
+
+/* ── Hero live badge ── */
+.dark .glass-card.rounded-full {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+/* ── Text utilities ── */
+.dark .text-slate-900 { color: hsl(var(--foreground)); }
+.dark .text-slate-700 { color: hsl(var(--muted-foreground)); }
+.dark .text-slate-600 { color: hsl(var(--muted-foreground)); }
+.dark .text-slate-500 { color: #64748b; }
+.dark .text-slate-400 { color: #475569; }
+.dark .text-slate-300 { color: #334155; }
+
+/* ── Glass cards (general) ── */
+.dark .glass-card {
+  background: rgba(22, 27, 34, 0.88);
+  border-color: hsl(var(--border));
+}
+
+/* ── Colored stat card borders ── */
+.dark .stat-card.border-blue-200    { border-color: rgba(59, 130, 246, 0.25); background: rgba(30, 41, 59, 0.7); }
+.dark .stat-card.border-amber-200   { border-color: rgba(245, 158, 11, 0.25); background: rgba(41, 33, 20, 0.7); }
+.dark .stat-card.border-emerald-200 { border-color: rgba(16, 185, 129, 0.25); background: rgba(20, 41, 33, 0.7); }
+.dark .stat-card.border-red-200     { border-color: rgba(239, 68, 68, 0.25);  background: rgba(41, 20, 20, 0.7); }
+.dark .stat-card.border-violet-200  { border-color: rgba(139, 92, 246, 0.25); background: rgba(30, 20, 50, 0.7); }
+
+/* ── Icon background pills ── */
+.dark .bg-blue-100    { background: rgba(59,  130, 246, 0.15); }
+.dark .bg-amber-100   { background: rgba(245, 158, 11,  0.15); }
+.dark .bg-emerald-100 { background: rgba(16,  185, 129, 0.15); }
+.dark .bg-red-100     { background: rgba(239, 68,  68,  0.15); }
+.dark .bg-violet-100  { background: rgba(139, 92,  246, 0.15); }
+.dark .bg-slate-50    { background: rgba(30,  41,  59,  0.5);  }
+
+/* ── Section headings ── */
+.dark h2.text-slate-900,
+.dark h3.text-slate-900,
+.dark h4.text-slate-900 { color: hsl(var(--foreground)); }
+
+/* ── Badges ── */
+.dark .bg-blue-100.text-blue-700       { background: rgba(59,130,246,0.18);   color: #93c5fd; }
+.dark .bg-amber-100.text-amber-700     { background: rgba(245,158,11,0.18);   color: #fcd34d; }
+.dark .bg-emerald-100.text-emerald-700 { background: rgba(16,185,129,0.18);   color: #6ee7b7; }
+.dark .bg-red-100.text-red-700         { background: rgba(239,68,68,0.18);    color: #fca5a5; }
+.dark .bg-violet-100.text-violet-700   { background: rgba(139,92,246,0.18);   color: #c4b5fd; }
+.dark .bg-slate-100.text-slate-700     { background: rgba(100,116,139,0.18);  color: #94a3b8; }
+
+/* ── Glass card colored borders (non-stat) ── */
+.dark .glass-card.border-blue-200    { border-color: rgba(59,130,246,0.2); }
+.dark .glass-card.border-amber-200   { border-color: rgba(245,158,11,0.2); }
+.dark .glass-card.border-emerald-200 { border-color: rgba(16,185,129,0.2); }
+.dark .glass-card.border-violet-200  { border-color: rgba(139,92,246,0.2); }
+
+/* ── Tables: thead ── */
+.dark thead,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-50\/90 {
+  background: rgba(22, 27, 34, 0.95) !important;
+  border-bottom-color: hsl(var(--border)) !important;
+}
+.dark thead th { color: hsl(var(--muted-foreground)); }
+
+/* ── Tables: tbody rows ── */
+.dark tbody tr.border-b { border-bottom-color: hsl(var(--border)); }
+
+.dark tbody tr.hover\:bg-emerald-50\/50:hover  { background: rgba(16,185,129,0.06) !important; }
+.dark tbody tr.hover\:bg-amber-50\/50:hover    { background: rgba(245,158,11,0.06) !important; }
+.dark tbody tr.hover\:bg-violet-50\/30:hover   { background: rgba(139,92,246,0.06) !important; }
+.dark tbody tr.hover\:bg-blue-50\/30:hover     { background: rgba(59,130,246,0.06) !important; }
+
+/* ── Progress bar track ── */
+.dark .h-2.bg-slate-200 { background: hsl(var(--border)); }
+
+/* ── Project / comment inner cards ── */
+.dark .p-4.bg-gradient-to-br,
+.dark .p-3.bg-gradient-to-br,
+.dark .p-6.bg-gradient-to-br {
+  background: linear-gradient(135deg, rgba(30,41,59,0.8), rgba(22,27,34,0.9)) !important;
+  border-color: hsl(var(--border));
+}
+.dark .p-4.bg-gradient-to-br:hover,
+.dark .p-3.bg-gradient-to-br:hover,
+.dark .p-6.bg-gradient-to-br:hover { border-color: rgba(59,130,246,0.35); }
+
+/* ── Comment form inputs ── */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark textarea {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark textarea:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+  outline: none;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: hsl(var(--muted-foreground)); }
+.dark label { color: hsl(var(--muted-foreground)); }
+
+/* ── Recharts tooltip ── */
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(22, 27, 34, 0.97) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 12px !important;
+}
+.dark .recharts-default-tooltip .recharts-tooltip-item { color: hsl(var(--foreground)) !important; }
+
+/* XAxis / YAxis ticks */
+.dark .recharts-cartesian-axis-tick-value { fill: hsl(var(--muted-foreground)); }
+.dark .recharts-cartesian-grid line { stroke: hsl(var(--border)); }
+.dark .recharts-legend-item-text { color: hsl(var(--muted-foreground)) !important; }
+
+/* ── Footer ── */
+.dark footer { background: rgba(10,15,25,0.97); }
+.dark footer .glass-card-dark { background: rgba(10,15,25,0.95); }
+.dark footer .border-white\/10 { border-color: rgba(255,255,255,0.06); }
+.dark footer .bg-white\/10     { background: rgba(255,255,255,0.06); }
+.dark footer .bg-white\/10:hover { background: rgba(255,255,255,0.1); }
+.dark footer .text-white { color: hsl(var(--foreground)); }
+
+/* ── Scrollbar in dark mode ── */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
+
+/* ── Loading spinner ring tracks ── */
+.dark .border-blue-200   { border-color: rgba(59,130,246,0.2);  }
+.dark .border-amber-200  { border-color: rgba(245,158,11,0.2);  }
+.dark .border-violet-200 { border-color: rgba(139,92,246,0.2);  }
+
+/* ── body overlay for dark mode ── */
+.dark body::before {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.85) 50%,
+    rgba(0, 0, 0, 0.88) 100%
+  );
 }

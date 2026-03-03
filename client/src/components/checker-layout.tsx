@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { UserMenu } from "../components/user-menu";
 import logoPath from "../assets/san_agustin.jpg";
 import { useAuth } from "@/contexts/auth-context";
+import { ThemeToggle } from "./theme-toggle";
 
 const checkerModules = [
   {
@@ -127,6 +128,7 @@ export function CheckerLayout({ children }: CheckerLayoutProps) {
 
       {/* Footer */}
       <div className="p-3 border-t">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </>

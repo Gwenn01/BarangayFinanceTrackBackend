@@ -40,6 +40,7 @@ import ActivityLog from "./pages/admin/activity-log";
 import NotFound from "./pages/not-found";
 
 import "./App.css";
+import { ThemeProvider } from "./components/theme-provider";
 
 /* ===================== ROUTES ===================== */
 
@@ -225,6 +226,7 @@ function MainApp() {
   if (isRoleBasedPage) {
     return (
       <div className="flex flex-col h-screen w-full">
+        
         <main className="flex-1 overflow-auto">
           <AppRoutes />
         </main>
@@ -252,12 +254,14 @@ function App() {
   return (
     <WouterRouter>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <MainApp />
-            <Toaster />
-          </TooltipProvider>
-        </AuthProvider>
+        <ThemeProvider defaultTheme="light">
+          <AuthProvider>
+            <TooltipProvider>
+              <MainApp />
+              <Toaster />
+            </TooltipProvider>
+          </AuthProvider>    
+        </ThemeProvider>
       </QueryClientProvider>
     </WouterRouter>
   );

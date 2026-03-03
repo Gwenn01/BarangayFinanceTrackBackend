@@ -52,6 +52,7 @@ import { UserMenu } from "../../components/user-menu";
 import { useToast } from "../../hooks/use-toast";
 import { api, apiCall } from "../../utils/api";
 import logoPath from "../../assets/san_agustin.jpg";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /* -------------------- TYPES -------------------- */
 
@@ -115,27 +116,27 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
 
   const SidebarContent = () => (
     <>
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-3">
+      <div className="p-4 border-b bg-background sticky top-0 z-10">
+        <div className="flex items-center gap-3 mb-3">
           <img
             src={logoPath}
-            alt="Barangay Logo"
-            className="h-12 w-12 rounded-full flex-shrink-0"
+            alt="Barangay San Agustin Logo"
+            className="h-12 w-12 rounded-full object-cover flex-shrink-0"
           />
           <div className="min-w-0">
-            <h2 className="text-sm font-bold truncate">Barangay San Agustin</h2>
+            <h2 className="text-sm font-bold font-poppins truncate">
+              Barangay San Agustin
+            </h2>
             <p className="text-xs text-muted-foreground truncate">
               Financial Monitoring System
             </p>
+            <p className="text-xs text-muted-foreground">Iba, Zambales</p>
           </div>
         </div>
       </div>
 
       <div className="px-4 py-3 border-b">
         <h3 className="text-sm font-bold font-poppins">Admin Panel</h3>
-        <p className="text-xs text-muted-foreground">
-          {currentPage === "users" ? "User Management" : "Activity Log"}
-        </p>
       </div>
 
       <nav className="flex-1 p-3 space-y-2">
@@ -157,15 +158,6 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
           </div>
         </Link>
 
-        <Link href="/">
-          <div
-            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <ArrowLeft className="h-4 w-4 flex-shrink-0" /> Back to Main
-          </div>
-        </Link>
-
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 p-2 text-destructive w-full text-left"
@@ -174,7 +166,8 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         </button>
       </nav>
 
-      <div className="border-t p-3 flex items-center justify-start">
+      <div className="border-t p-3 flex items-center justify-start flex-col">
+        <ThemeToggle />
         <UserMenu />
       </div>
     </>

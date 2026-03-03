@@ -40,6 +40,7 @@ import {
   Wallet,
   PieChart as PieChartIcon,
   MessageSquare,
+  LogIn,
 } from "lucide-react";
 
 import { useLocation } from "wouter";
@@ -410,7 +411,7 @@ export default function ViewerDashboard() {
   const pieChartColors = [COLORS.primary, COLORS.success, COLORS.warning, COLORS.purple, COLORS.danger];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white relative">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
@@ -418,133 +419,41 @@ export default function ViewerDashboard() {
           font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
 
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-fadeInUp {
-          animation: fadeInUp 0.8s ease-out forwards;
-        }
-
-        .animate-slideIn {
-          animation: slideIn 0.6s ease-out forwards;
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-
-        .glass-card {
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-        }
-
-        .glass-card-dark {
-          background: rgba(15, 23, 42, 0.8);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .stat-card {
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-          transition: left 0.5s;
-        }
-
-        .stat-card:hover::before {
-          left: 100%;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-
-        .gradient-text {
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .mesh-gradient {
-          background: 
-            radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f5f9;
-          border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          border-radius: 10px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #2563eb, #7c3aed);
-        }
       `}</style>
+      <header className="fixed w-full h-20 z-10 backdrop-blur-md bg-white/90 flex items-center justify-between px-6 sm:px-12 lg:px-20 shadow">
+          <h1 className="text-xl sm:text-2xl font-black gradient-text">FundSight</h1>
+            <button
+              onClick={() => navigate("/login")}
+              className="group  px-5 bg-blue-600 sm:px-7 py-1.5 sm:py-2 rounded-lg 
+                        border-2 border-blue-600 font-semibold sm:font-bold 
+                        text-base sm:text-lg hover:bg-blue-50 transition-all duration-300 
+                        shadow-md sm:shadow-lg hover:shadow-lg sm:hover:shadow-xl transform hover:-translate-y-1 text-white hover:text-blue-700"
+            >
+              <span className="flex items-center justify-center gap-2">
+              <LogIn className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:text-blue-700 transition-colors duration-300" />
+                Login
+                
+              </span>
+            </button>
+      </header>
+      <div className=" overflow-hidden">
 
-      {/* Hero Header */}
-      <header className="relative overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0 mesh-gradient" />
+        {/* <div className="absolute inset-0 mesh-gradient" />
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-20 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl animate-float" />
           <div className="absolute top-40 right-20 w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-3xl animate-float" style={{ animationDelay: '2s' }} />
           <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl animate-float" style={{ animationDelay: '4s' }} />
-        </div>
+        </div> */}
         
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-16 space-y-20">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
           <div className="text-center animate-fadeInUp">
             
-            {/* Status Badge */}
+ 
             <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 glass-card rounded-full text-xs sm:text-sm font-semibold mb-6 sm:mb-8 shadow-lg">
               <div className="relative flex h-2.5 w-2.5 sm:h-3 sm:w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -555,13 +464,13 @@ export default function ViewerDashboard() {
               </span>
             </div>
             
-            {/* Main Title */}
+
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold mb-4 sm:mb-6 leading-tight">
               <span className="block text-slate-900 mb-1 sm:mb-2">Barangay</span>
               <span className="gradient-text">Financial Dashboard</span>
             </h1>
             
-            {/* Subtitle */}
+
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-600 max-w-xl sm:max-w-2xl md:max-w-3xl mx-auto leading-relaxed font-medium px-2">
               Empowering communities through{" "}
               <span className="text-blue-600 font-semibold">
@@ -571,41 +480,60 @@ export default function ViewerDashboard() {
             </p>
           </div>
 
-          {/* Enhanced Key Metrics */}
+
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-12 sm:mt-16 max-w-6xl mx-auto">
-            {[
-              { 
-                icon: Wallet, 
-                value: formatCurrencyCompact(totalCollections), 
-                label: "Total Collections", 
-                color: "blue"
-              },
-              { 
-                icon: TrendingDown, 
-                value: formatCurrencyCompact(totalDisbursements), 
-                label: "Total Disbursements", 
-                color: "amber"
-              },
-              { 
-                icon: TrendingUp, 
-                value: formatCurrencyCompact(surplus), 
-                label: surplus >= 0 ? "Surplus" : "Deficit", 
-                color: surplus >= 0 ? "emerald" : "red"
-              },
-              { 
-                icon: Target, 
-                value: `${dfurProjects?.length || 0}`, 
-                label: "Projects", 
-                color: "violet"
-              },
-            ].map((metric, index) => {
-              const Icon = metric.icon;
-              return (
-                <div 
-                  key={index} 
-                  className="stat-card glass-card rounded-2xl p-4 sm:p-6 border"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
+{[
+  { 
+    icon: Wallet, 
+    value: formatCurrencyCompact(totalCollections), 
+    label: "Total Collections", 
+    color: "blue",
+    link: "#revenue"
+  },
+  { 
+    icon: TrendingDown, 
+    value: formatCurrencyCompact(totalDisbursements), 
+    label: "Total Disbursements", 
+    color: "amber",
+    link: "#revenue"
+  },
+  { 
+    icon: TrendingUp, 
+    value: formatCurrencyCompact(surplus), 
+    label: surplus >= 0 ? "Surplus" : "Deficit", 
+    color: surplus >= 0 ? "emerald" : "red",
+    link: "#revenue"
+  },
+  { 
+    icon: Target, 
+    value: `${dfurProjects?.length || 0}`, 
+    label: "Projects", 
+    color: "violet",
+    link: "#projects"
+  },
+].map((metric, index) => {
+  const Icon = metric.icon;
+
+  const handleClick = () => {
+    if (!metric.link) return;
+
+    const element = document.querySelector(metric.link) as HTMLElement | null;
+
+    if (element) {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  return (
+    <div
+      key={metric.label}
+      className="stat-card glass-card rounded-2xl p-4 sm:p-6 border cursor-pointer hover:scale-[1.02] transition-all duration-300"
+      style={{ animationDelay: `${index * 0.1}s` }}
+      onClick={handleClick}
+    >
                   <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-${metric.color}-100 mb-3 sm:mb-4 shadow-lg`}>
                     <Icon className={`w-6 h-6 sm:w-7 sm:h-7 text-${metric.color}-600`} />
                   </div>
@@ -620,10 +548,6 @@ export default function ViewerDashboard() {
             })}
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-16 space-y-20">
         
         {/* Financial Overview Section */}
         <section>
@@ -637,7 +561,7 @@ export default function ViewerDashboard() {
 
           {/* Budget Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-            <div className="stat-card glass-card rounded-2xl p-6 border border-blue-200">
+            <div className="glass-card rounded-2xl p-6 border border-blue-200 ">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-blue-100 rounded-xl">
                   <DollarSign className="w-6 h-6 text-blue-600" />
@@ -650,7 +574,7 @@ export default function ViewerDashboard() {
               <div className="text-sm text-slate-600 font-medium">Total Income</div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl p-6 border border-amber-200">
+            <div className="glass-card rounded-2xl p-6 border border-amber-200">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-amber-100 rounded-xl">
                   <Activity className="w-6 h-6 text-amber-600" />
@@ -663,7 +587,7 @@ export default function ViewerDashboard() {
               <div className="text-sm text-slate-600 font-medium">Total Spending</div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl p-6 border border-emerald-200">
+            <div className="glass-card rounded-2xl p-6 border border-emerald-200">
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-xl ${
                   surplus >= 0 
@@ -692,7 +616,7 @@ export default function ViewerDashboard() {
               <div className="text-sm text-slate-600 font-medium">Net Position</div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl p-6 border border-violet-200">
+            <div className="glass-card rounded-2xl p-6 border border-violet-200">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 bg-violet-100 rounded-xl">
                   <BarChart3 className="w-6 h-6 text-violet-600" />
@@ -781,7 +705,7 @@ export default function ViewerDashboard() {
         </section>
 
         {/* Revenue & Expenditure Section */}
-        <section>
+        <section id="revenue">
           <div className="flex items-center gap-4 mb-10">
             <div className="w-2 h-12 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full shadow-lg" />
             <div>
@@ -794,7 +718,7 @@ export default function ViewerDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
 
             {/* INCOME */}
-            <div className="stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-emerald-200">
+            <div className="bg-emerald-200/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden shadow-lg">
               
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-emerald-400/20 rounded-full blur-2xl sm:blur-3xl" />
               
@@ -825,7 +749,7 @@ export default function ViewerDashboard() {
 
 
             {/* EXPENSE */}
-            <div className="stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-amber-200">
+            <div className="bg-amber-200/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden shadow-lg">
               
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-amber-400/20 rounded-full blur-2xl sm:blur-3xl" />
               
@@ -1173,7 +1097,7 @@ export default function ViewerDashboard() {
         </section>
 
         {/* Development Projects */}
-        <section>
+        <section id="projects">
           <div className="flex items-center gap-4 mb-10">
             <div className="w-2 h-12 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full shadow-lg" />
             <div>
@@ -1476,7 +1400,9 @@ export default function ViewerDashboard() {
                       key={index} 
                       className="border-b border-slate-100 hover:bg-blue-50/30 transition-all duration-200"
                     >
-                      <td className="py-5 px-6 font-bold text-slate-900" title={item.fullCategory}>{item.category}</td>
+                      <td className="py-5 px-6 font-bold text-slate-900 w-1/3" title={item.fullCategory}>
+                        <p className="text-wrap">{item.fullCategory}</p>
+                        </td>
                       <td className="text-right py-5 px-6 text-slate-700 font-semibold">
                         {formatCurrency(item.planned)}
                       </td>
@@ -1737,74 +1663,6 @@ export default function ViewerDashboard() {
             </div>
           </div>
         </section>
-
-        <div className="flex flex-col items-center justify-center gap-6 sm:gap-8 py-4 sm:py-6">
-
-          {/* Description */}
-          <div className="text-center max-w-2xl px-4 sm:px-6">
-            <p className="text-gray-600 text-base sm:text-lg leading-relaxed">
-              Monitor your barangay's financial activities in real-time. Access transparent reports,
-              track community funds, and ensure accountability with verified data at your fingertips.
-            </p>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 w-full sm:w-auto">
-
-            {/* Continue button */}
-            <button
-              onClick={() => navigate("/role-selection")}
-              className="group relative w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 rounded-xl sm:rounded-2xl 
-                        bg-gradient-to-r from-blue-600 to-violet-600 text-white font-semibold sm:font-bold 
-                        text-base sm:text-lg hover:from-blue-700 hover:to-violet-700 transition-all duration-300 
-                        shadow-lg sm:shadow-xl hover:shadow-xl sm:hover:shadow-2xl transform hover:-translate-y-1 overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 
-                              translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"/>
-              
-              <span className="relative flex items-center justify-center gap-2">
-                Continue as User
-                <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"/>
-              </span>
-            </button>
-
-            {/* Login button */}
-            <button
-              onClick={() => navigate("/login")}
-              className="group w-full sm:w-auto px-6 sm:px-10 py-4 sm:py-5 rounded-xl sm:rounded-2xl 
-                        border-2 border-blue-600 text-blue-700 bg-white font-semibold sm:font-bold 
-                        text-base sm:text-lg hover:bg-blue-50 transition-all duration-300 
-                        shadow-md sm:shadow-lg hover:shadow-lg sm:hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <span className="flex items-center justify-center gap-2">
-                Login
-                <Shield className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform"/>
-              </span>
-            </button>
-
-          </div>
-
-          {/* Trust indicators */}
-          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-6 mt-2 sm:mt-4 text-xs sm:text-sm text-gray-500">
-
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/>
-              <span>Real-Time Updates</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"/>
-              <span>Verified Transactions</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse"/>
-              <span>100% Transparent</span>
-            </div>
-
-          </div>
-
-        </div>
       </main>
 
       {/* Modern Footer */}
@@ -1823,7 +1681,8 @@ export default function ViewerDashboard() {
 
               {/* Portal Info */}
               <div className="sm:col-span-2">
-                <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent mb-3 sm:mb-4">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black gradient-text">FundSight</h1>
+                <h3 className="text-xl sm:text-2xl lg:text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent mb-3 sm:mb-4">
                   Transparency Portal
                 </h3>
 
