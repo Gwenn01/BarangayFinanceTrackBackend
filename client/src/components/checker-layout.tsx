@@ -127,7 +127,7 @@ export function CheckerLayout({ children }: CheckerLayoutProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t">
+      <div className="p-3 border-t flex items-center justify-center flex-col">
         <ThemeToggle />
         <UserMenu />
       </div>
@@ -137,7 +137,7 @@ export function CheckerLayout({ children }: CheckerLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-1/6 min-w-[200px] max-w-[260px] border-r bg-card flex-col overflow-y-auto flex-shrink-0">
+      <aside className="hidden md:flex w-1/6 min-w-[200px] max-w-[360px] border-r bg-card flex-col overflow-y-auto flex-shrink-0">
         <SidebarContent />
       </aside>
 

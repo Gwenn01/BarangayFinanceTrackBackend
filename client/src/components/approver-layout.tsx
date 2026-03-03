@@ -121,7 +121,7 @@ export function ApproverLayout({ children }: ApproverLayoutProps) {
         </Button>
       </nav>
 
-      <div className="border-t p-3 flex items-center justify-start flex-col">
+      <div className="border-t p-3 flex items-center justify-center flex-col">
         <ThemeToggle />
         <UserMenu />
       </div>
@@ -131,7 +131,7 @@ export function ApproverLayout({ children }: ApproverLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-1/6 min-w-[200px] max-w-[260px] border-r bg-card flex-col flex-shrink-0">
+      <aside className="hidden md:flex w-1/6 min-w-[200px] max-w-[360px] border-r bg-card flex-col flex-shrink-0">
         <SidebarContent />
       </aside>
 
