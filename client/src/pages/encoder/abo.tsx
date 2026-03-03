@@ -382,7 +382,7 @@ export default function ABO() {
         </Card>
 
         {/* Budget Entries */}
-        <Card className="border-none bg-white p-0">
+        <Card className="border-none p-0">
           <CardHeader className="pb-3 px-0 md:px-6">
             <CardTitle className="font-poppins text-base md:text-lg">
               Budget Entries — {new Date().getFullYear()}

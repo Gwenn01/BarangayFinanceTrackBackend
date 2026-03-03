@@ -564,6 +564,45 @@
 .dark .border-amber-200  { border-color: rgba(245,158,11,0.2);  }
 .dark .border-violet-200 { border-color: rgba(139,92,246,0.2);  }
 
+/* ── ABO page: Budget Entries card (hardcoded bg-white override) ── */
+.dark .border-none.bg-white {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground));
+}
+
+/* ── ABO empty state ── */
+.dark .text-center.py-12.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .text-center.py-12 .text-base,
+.dark .text-center.py-12 .text-lg {
+  color: hsl(var(--foreground));
+}
+
+.dark .text-center.py-12 .text-sm {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── ABO mobile entry card ── */
+.dark .border.rounded-lg.p-4.bg-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--card-border));
+  color: hsl(var(--card-foreground));
+}
+
+/* Mobile total footer row */
+.dark .border.rounded-lg.px-4.py-3.bg-muted\/40 {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--border));
+}
+
+/* ── ABO delete confirmation: entry detail block ── */
+.dark .mt-4.p-3.bg-muted.rounded-md {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
 /* ── body overlay for dark mode ── */
 .dark body::before {
   background: linear-gradient(
