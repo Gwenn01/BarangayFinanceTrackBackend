@@ -95,7 +95,8 @@ export default function ApproverSRE() {
       if (!response.ok) throw new Error("Failed to fetch collections");
       return response.json();
     },
-    refetchOnMount: true,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
@@ -108,7 +109,8 @@ export default function ApproverSRE() {
       if (!response.ok) throw new Error("Failed to fetch disbursements");
       return response.json();
     },
-    refetchOnMount: true,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

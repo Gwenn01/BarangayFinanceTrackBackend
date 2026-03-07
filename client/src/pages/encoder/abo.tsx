@@ -42,7 +42,7 @@ import {
 
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { EncoderLayout } from "../../components/encoder-layout";
 
 const API_BASE_URL =
@@ -141,11 +141,25 @@ function frontendToBackend(
 
 const formatCurrency = (value: string) => {
   const num = parseFloat(value);
+  if (isNaN(num)) return "₱0.00";
   return `₱${num.toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 };
+
+/**
+ * Safely formats a date string. Returns a fallback string if the date is
+ * null, undefined, empty, or not a valid date.
+ */
+function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): string {
+  if (!dateStr) return fallback;
+  // Try ISO parse first, then plain Date constructor
+  let date = parseISO(dateStr);
+  if (!isValid(date)) date = new Date(dateStr);
+  if (!isValid(date)) return fallback;
+  return format(date, "MMM dd, yyyy");
+}
 
 /* -------------------- MOBILE ENTRY CARD -------------------- */
 
@@ -187,7 +201,7 @@ function EntryCard({
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
         <span className="truncate">{entry.payee}</span>
         <span className="flex-shrink-0">
-          {format(new Date(entry.transactionDate), "MMM dd, yyyy")}
+          {safeFormatDate(entry.transactionDate)}
         </span>
       </div>
 
@@ -249,6 +263,9 @@ export default function ABO() {
       if (Array.isArray(data)) return data.map(backendToFrontend);
       return [];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   // Create mutation
@@ -261,7 +278,7 @@ export default function ABO() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
+      queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Added", description: "Budget entry has been successfully added to ABO." });
       setDialogOpen(false);
       setSelectedEntry(undefined);
@@ -278,7 +295,7 @@ export default function ABO() {
       return apiFetch("/put-budget-entries", { method: "PUT", body: JSON.stringify(backendData) });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
+      queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Updated", description: "Budget entry has been successfully updated." });
       setDialogOpen(false);
       setSelectedEntry(undefined);
@@ -294,7 +311,7 @@ export default function ABO() {
       return apiFetch("/delete-budget-entries", { method: "DELETE", body: JSON.stringify({ id }) });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["budget-entries"] });
+      queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Deleted", description: "Budget entry has been successfully deleted." });
       setDeleteDialogOpen(false);
       setEntryToDelete(undefined);
@@ -336,7 +353,10 @@ export default function ABO() {
     }
   };
 
-  const totalAllocated = entries.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  const totalAllocated = entries.reduce((sum, e) => {
+    const num = parseFloat(e.amount);
+    return sum + (isNaN(num) ? 0 : num);
+  }, 0);
 
   return (
     <EncoderLayout>
@@ -445,7 +465,7 @@ export default function ABO() {
                             {entry.transactionId}
                           </TableCell>
                           <TableCell>
-                            {format(new Date(entry.transactionDate), "MMM dd, yyyy")}
+                            {safeFormatDate(entry.transactionDate)}
                           </TableCell>
                           <TableCell className="max-w-xs">
                             <div className="font-medium">{entry.category}</div>

@@ -80,7 +80,7 @@ type BackendDisbursement = {
 };
 
 // Frontend types for display
-type Collection = {
+export type Collection = {
   id: number;
   transaction_date: string | null;
   category: string;
@@ -90,7 +90,7 @@ type Collection = {
   created_at?: string;
 };
 
-type Disbursement = {
+export type Disbursement = {
   id: number;
   transaction_date: string | null;
   category: string;
@@ -100,7 +100,7 @@ type Disbursement = {
   created_at?: string;
 };
 
-type DfurProject = {
+export type DfurProject = {
   id: number;
   transaction_id: string;
   transaction_date: string | null;
@@ -118,7 +118,7 @@ type DfurProject = {
   review_comment?: string;
 };
 
-type DfurApiResponse = {
+export type DfurApiResponse = {
   data: DfurProject[];
   message: string;
 };
@@ -132,7 +132,7 @@ type Comment = {
 };
 
 // Convert backend to frontend format
-function backendCollectionToFrontend(backend: BackendCollection): Collection {
+export function backendCollectionToFrontend(backend: BackendCollection): Collection {
   return {
     id: backend.id,
     transaction_date: backend.transaction_date,
@@ -143,7 +143,7 @@ function backendCollectionToFrontend(backend: BackendCollection): Collection {
   };
 }
 
-function backendDisbursementToFrontend(backend: BackendDisbursement): Disbursement {
+export function backendDisbursementToFrontend(backend: BackendDisbursement): Disbursement {
   return {
     id: backend.id,
     transaction_date: backend.transaction_date,
@@ -449,7 +449,7 @@ export default function ViewerDashboard() {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-16 space-y-20">
+      <main className="max-w-7xl mx-auto px-6 py-16 space-y-12">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
           <div className="text-center animate-fadeInUp">
             
@@ -481,7 +481,7 @@ export default function ViewerDashboard() {
           </div>
 
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-12 sm:mt-16 max-w-6xl mx-auto">
+          {/* <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-12 sm:mt-16 max-w-6xl mx-auto">
 {[
   { 
     icon: Wallet, 
@@ -546,7 +546,7 @@ export default function ViewerDashboard() {
                 </div>
               );
             })}
-          </div>
+          </div> */}
         </div>
         
         {/* Financial Overview Section */}

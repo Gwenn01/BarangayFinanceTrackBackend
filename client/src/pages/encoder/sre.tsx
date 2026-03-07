@@ -359,7 +359,8 @@ export default function SRE() {
       if (Array.isArray(data)) return data.map(backendCollectionToFrontend);
       return [];
     },
-    refetchOnMount: true,  
+    staleTime: 0,
+    refetchOnMount: "always",  
     refetchOnWindowFocus: true, 
     refetchOnReconnect: true,  
   });
@@ -374,9 +375,11 @@ export default function SRE() {
       if (Array.isArray(data)) return data.map(backendDisbursementToFrontend);
       return [];
     },
-    refetchOnMount: true,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    
   });
 
   /* Delete collection */
