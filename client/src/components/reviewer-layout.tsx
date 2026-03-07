@@ -10,16 +10,9 @@ import { ThemeToggle } from "./theme-toggle";
 const reviewerModules = [
   {
     id: "dashboard",
-    title: "Dashboard",
+    title: "Reviewer Dashboard",
     url: "/reviewer/dashboard",
     icon: LayoutDashboard,
-  },
-  {
-    id: "dfur",
-    title: "Development Fund Utilization Report",
-    abbreviation: "DFUR",
-    url: "/reviewer/dfur",
-    icon: TrendingUp,
   },
 ];
 
