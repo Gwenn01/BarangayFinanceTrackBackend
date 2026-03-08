@@ -21,7 +21,6 @@ import {
   Users,
   Activity,
   LogOut,
-  ArrowLeft,
   Loader2,
   Menu,
   X,
@@ -31,29 +30,33 @@ import {
   ChevronsLeft,
   ChevronsRight,
   History,
+  LogIn,
+  LogOut as LogOutIcon,
+  Monitor,
+  Globe,
+  User,
+  Clock,
+  Shield,
+  Search,
+  Filter,
 } from "lucide-react";
 import { UserMenu } from "../../components/user-menu";
 import logoPath from "../../assets/san_agustin.jpg";
-import { api } from "@/utils/api";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /* =======================
    TYPES
 ======================= */
-type StatusKey = "pending" | "approved" | "flagged";
-
-interface ActivityLog {
-  id: string;
-  transactionId: string;
-  type: string;
-  date: string;
+interface HistoryLog {
+  id: number;
+  action: string;
+  created_at: string;
   description: string;
-  category: string;
-  amount: string;
-  status: StatusKey;
-  payee?: string;
-  payor?: string;
-  reviewComment?: string;
+  ip_address: string;
+  module: string;
+  user_agent: string;
+  user_id: number;
+  username: string;
 }
 
 /* =======================
@@ -131,15 +134,18 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
             Activity Log
           </div>
         </Link>
+
         <Link href="/admin/history-log">
           <div
-            className="flex items-center gap-2 p-2 rounded bg-blue-600 text-white cursor-pointer"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer ${
+              currentPage === "history" ? "bg-blue-600 text-white" : "hover:bg-muted"
+            }`}
             onClick={() => setSidebarOpen(false)}
           >
-            <History className="h-4 w-4 flex-shrink-0" /> History Logs
+            <History className="h-4 w-4 flex-shrink-0" />
+            History Logs
           </div>
         </Link>
-
 
         <div className="border-t my-3" />
         <button
@@ -160,12 +166,10 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 border-r bg-card flex-col overflow-y-auto flex-shrink-0">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
@@ -173,7 +177,6 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         />
       )}
 
-      {/* Mobile Drawer */}
       <aside
         className={`fixed top-0 left-0 h-full w-64 z-50 bg-card border-r flex flex-col overflow-y-auto transition-transform duration-300 md:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -187,16 +190,14 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         <SidebarContent />
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Top Bar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-card flex-shrink-0">
           <Button size="icon" variant="ghost" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2 min-w-0">
             <img src={logoPath} alt="Barangay Logo" className="h-8 w-8 rounded-full flex-shrink-0" />
-            <span className="text-sm font-bold truncate">Activity Log</span>
+            <span className="text-sm font-bold truncate">History Logs</span>
           </div>
         </div>
 
@@ -209,67 +210,155 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
 /* =======================
    HELPERS
 ======================= */
-const getTypeBadge = (type: string) => {
+const getActionConfig = (action: string) => {
+  const map: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+    login: {
+      color: "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30",
+      icon: <LogIn className="h-3 w-3" />,
+      label: "Login",
+    },
+    logout: {
+      color: "bg-amber-500/15 text-amber-600 border border-amber-500/30",
+      icon: <LogOutIcon className="h-3 w-3" />,
+      label: "Logout",
+    },
+  };
+  return (
+    map[action.toLowerCase()] ?? {
+      color: "bg-blue-500/15 text-blue-600 border border-blue-500/30",
+      icon: <Activity className="h-3 w-3" />,
+      label: action,
+    }
+  );
+};
+
+const getModuleBadgeColor = (module: string) => {
   const map: Record<string, string> = {
-    collection: "bg-green-600 text-white",
-    disbursement: "bg-orange-600 text-white",
-    budget_entry: "bg-blue-600 text-white",
-    dfur: "bg-purple-600 text-white",
+    authentication: "bg-violet-500/15 text-violet-600 border border-violet-500/30",
+    finance: "bg-blue-500/15 text-blue-600 border border-blue-500/30",
+    users: "bg-cyan-500/15 text-cyan-600 border border-cyan-500/30",
   };
-  return map[type] ?? "bg-gray-400 text-white";
+  return map[module.toLowerCase()] ?? "bg-gray-500/15 text-gray-600 border border-gray-500/30";
 };
 
-const getStatusBadge = (status: StatusKey) => {
-  const map: Record<StatusKey, string> = {
-    pending: "bg-gray-400 text-white",
-    approved: "bg-green-600 text-white",
-    flagged: "bg-red-600 text-white",
+const parseUserAgent = (ua: string): string => {
+  if (ua.includes("PostmanRuntime")) return "Postman";
+  if (ua.includes("Chrome")) return "Chrome";
+  if (ua.includes("Firefox")) return "Firefox";
+  if (ua.includes("Safari")) return "Safari";
+  if (ua.includes("Edge")) return "Edge";
+  return "Unknown";
+};
+
+const formatDateTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return {
+    date: d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" }),
+    time: d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
   };
-  return map[status];
 };
 
-const formatCurrency = (value: string) => {
-  const num = parseFloat(value);
-  return `₱${num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const getUsernameColor = (username: string) => {
+  const colors = [
+    "bg-blue-500",
+    "bg-violet-500",
+    "bg-emerald-500",
+    "bg-amber-500",
+    "bg-rose-500",
+    "bg-cyan-500",
+    "bg-fuchsia-500",
+    "bg-teal-500",
+  ];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
 };
-
-const formatDate = (date: string) =>
-  date
-    ? new Date(date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })
-    : "N/A";
 
 /* =======================
-   MOBILE ACTIVITY CARD
+   MOBILE CARD
 ======================= */
-function ActivityCard({ activity }: { activity: ActivityLog }) {
+function HistoryCard({ log }: { log: HistoryLog }) {
+  const actionCfg = getActionConfig(log.action);
+  const { date, time } = formatDateTime(log.created_at);
+  const browser = parseUserAgent(log.user_agent);
+  const avatarColor = getUsernameColor(log.username);
+
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-card">
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-muted-foreground truncate">
-          {activity.transactionId}
+    <div className="border rounded-xl p-4 space-y-3 bg-card shadow-sm hover:shadow-md transition-shadow">
+      {/* Header Row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`h-8 w-8 rounded-full ${avatarColor} flex items-center justify-center flex-shrink-0`}>
+            <span className="text-white text-xs font-bold uppercase">
+              {log.username.charAt(0)}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate capitalize">{log.username}</p>
+            <p className="text-xs text-muted-foreground">UID #{log.user_id}</p>
+          </div>
+        </div>
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${actionCfg.color}`}>
+          {actionCfg.icon}
+          {actionCfg.label}
         </span>
-        <Badge className={`${getStatusBadge(activity.status)} text-xs flex-shrink-0`}>
-          {activity.status}
-        </Badge>
       </div>
 
-      <p className="text-sm font-medium leading-snug line-clamp-2">
-        {activity.description || "—"}
-      </p>
+      {/* Description */}
+      <p className="text-sm text-muted-foreground leading-snug">{log.description}</p>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <Badge className={`${getTypeBadge(activity.type)} text-xs`}>
-          {activity.type.replace("_", " ")}
-        </Badge>
-        {activity.category && (
-          <span className="text-xs text-muted-foreground truncate">{activity.category}</span>
-        )}
+      {/* Meta Row */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Globe className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate font-mono">{log.ip_address}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Monitor className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{browser}</span>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{formatDate(activity.date)}</span>
-        <span className="text-sm font-semibold">{formatCurrency(activity.amount)}</span>
+      {/* Footer */}
+      <div className="flex items-center justify-between border-t pt-2.5">
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${getModuleBadgeColor(log.module)}`}>
+          <Shield className="h-3 w-3" />
+          {log.module}
+        </span>
+        <div className="text-right">
+          <p className="text-xs font-medium">{date}</p>
+          <p className="text-xs text-muted-foreground">{time}</p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+/* =======================
+   STATS CARDS
+======================= */
+function StatsBar({ logs }: { logs: HistoryLog[] }) {
+  const logins = logs.filter((l) => l.action === "login").length;
+  const logouts = logs.filter((l) => l.action === "logout").length;
+  const uniqueUsers = new Set(logs.map((l) => l.user_id)).size;
+
+  return (
+    <div className="grid grid-cols-3 gap-3 mb-5">
+      {[
+        { label: "Total Events", value: logs.length, icon: <History className="h-4 w-4" />, color: "text-blue-600", bg: "bg-blue-500/10" },
+        { label: "Logins", value: logins, icon: <LogIn className="h-4 w-4" />, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+        { label: "Active Users", value: uniqueUsers, icon: <User className="h-4 w-4" />, color: "text-violet-600", bg: "bg-violet-500/10" },
+      ].map(({ label, value, icon, color, bg }) => (
+        <div key={label} className="rounded-xl border bg-card p-3 md:p-4 flex items-center gap-3 shadow-sm">
+          <div className={`h-9 w-9 rounded-lg ${bg} ${color} flex items-center justify-center flex-shrink-0`}>
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg md:text-2xl font-bold leading-none">{value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{label}</p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -289,9 +378,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: Pagin
   const endItem = Math.min(currentPage * ROWS_PER_PAGE, totalItems);
 
   const getPageNumbers = (): (number | "ellipsis")[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
     const pages: (number | "ellipsis")[] = [1];
     if (currentPage > 3) pages.push("ellipsis");
     const start = Math.max(2, currentPage - 1);
@@ -304,31 +391,17 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: Pagin
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-4 border-t mt-2">
-      {/* Count label */}
       <p className="text-xs text-muted-foreground order-2 sm:order-1">
-        Showing{" "}
-        <span className="font-medium text-foreground">{startItem}–{endItem}</span>
-        {" "}of{" "}
-        <span className="font-medium text-foreground">{totalItems}</span> transactions
+        Showing <span className="font-medium text-foreground">{startItem}–{endItem}</span> of{" "}
+        <span className="font-medium text-foreground">{totalItems}</span> events
       </p>
-
-      {/* Buttons */}
       <div className="flex items-center gap-1 order-1 sm:order-2">
-        <Button
-          size="icon" variant="outline" className="h-8 w-8"
-          onClick={() => onPageChange(1)} disabled={currentPage === 1} title="First page"
-        >
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
           <ChevronsLeft className="h-3.5 w-3.5" />
         </Button>
-
-        <Button
-          size="icon" variant="outline" className="h-8 w-8"
-          onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} title="Previous page"
-        >
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-
-        {/* Page numbers — hidden on xs */}
         <div className="hidden sm:flex items-center gap-1">
           {getPageNumbers().map((page, idx) =>
             page === "ellipsis" ? (
@@ -346,23 +419,11 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: Pagin
             )
           )}
         </div>
-
-        {/* Compact label on very small screens */}
-        <span className="sm:hidden text-sm font-medium px-2 select-none">
-          {currentPage} / {totalPages}
-        </span>
-
-        <Button
-          size="icon" variant="outline" className="h-8 w-8"
-          onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} title="Next page"
-        >
+        <span className="sm:hidden text-sm font-medium px-2 select-none">{currentPage} / {totalPages}</span>
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
-
-        <Button
-          size="icon" variant="outline" className="h-8 w-8"
-          onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} title="Last page"
-        >
+        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
           <ChevronsRight className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -374,98 +435,62 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: Pagin
    PAGE
 ======================= */
 export default function HistoryLogPage() {
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [logs, setLogs] = useState<HistoryLog[]>([]);
+  const [filtered, setFiltered] = useState<HistoryLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [actionFilter, setActionFilter] = useState<"all" | "login" | "logout">("all");
 
   useEffect(() => {
-    fetchActivityLogs();
+    fetchLogs();
   }, []);
 
-  const fetchActivityLogs = async () => {
+  useEffect(() => {
+    let result = [...logs];
+    if (actionFilter !== "all") result = result.filter((l) => l.action === actionFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (l) =>
+          l.username.toLowerCase().includes(q) ||
+          l.ip_address.includes(q) ||
+          l.description.toLowerCase().includes(q) ||
+          l.module.toLowerCase().includes(q)
+      );
+    }
+    setFiltered(result);
+    setCurrentPage(1);
+  }, [logs, searchQuery, actionFilter]);
+
+  const fetchLogs = async () => {
     try {
       setLoading(true);
       setError(null);
-      setCurrentPage(1);
 
-      const response = await fetch("https://barangayfinancetrackbackenddeployment.onrender.com/api/get-all-docs");
+      const response = await fetch(
+        "https://barangayfinancetrackbackenddeployment.onrender.com/api/get-activity-history-log"
+      );
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const data = await response.json();
+      const data: HistoryLog[] = await response.json();
 
-      const transformedData: ActivityLog[] = data.map((item: any) => {
-        let type = "collection";
-        let description = "";
-        let category = "";
-        let amount = "0.00";
-        let date = "";
+      // Sort newest first
+      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        if (item.transaction_id?.startsWith("COLL-")) {
-          type = "collection";
-          description = item.nature_of_collection || "Collection";
-          category = item.nature_of_collection || "Collection";
-          amount = item.amount || "0.00";
-          date = item.transaction_date || item.created_at;
-        } else if (item.transaction_id?.startsWith("DISB-")) {
-          type = "disbursement";
-          description = item.nature_of_disbursement || "Disbursement";
-          category = item.nature_of_disbursement || "Disbursement";
-          amount = item.amount || "0.00";
-          date = item.transaction_date || item.created_at;
-        } else if (item.transaction_id?.startsWith("BUDG-")) {
-          type = "budget_entry";
-          description = item.expenditure_program || "Budget Entry";
-          category = item.allocation_category || "Budget";
-          amount = item.amount || "0.00";
-          date = item.transaction_date || item.created_at;
-        } else if (item.transaction_id?.startsWith("DFUR-")) {
-          type = "dfur";
-          description = item.project || "Development Fund Utilization";
-          category = item.name_of_collection || "DFUR";
-          amount = item.total_cost_incurred || item.total_cost_approved || "0.00";
-          date = item.transaction_date || item.created_at;
-        }
-
-        let status: StatusKey = "pending";
-        if (item.review_status === "approved") status = "approved";
-        else if (item.is_flagged === 1) status = "flagged";
-
-        return {
-          id: String(item.id),
-          transactionId: item.transaction_id || "N/A",
-          type,
-          date,
-          description,
-          category,
-          amount,
-          status,
-          payee: item.payee,
-          payor: item.payor,
-          reviewComment: item.review_comment,
-        };
-      });
-
-      transformedData.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      setActivityLogs(transformedData);
+      setLogs(data);
     } catch (err) {
-      console.error("Error fetching activity logs:", err);
+      console.error("Error fetching history logs:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch data");
     } finally {
       setLoading(false);
     }
   };
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(activityLogs.length / ROWS_PER_PAGE));
-  const paginatedLogs = activityLogs.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE
-  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
+  const paginated = filtered.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
@@ -474,11 +499,18 @@ export default function HistoryLogPage() {
 
   return (
     <AdminLayout currentPage="history">
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+
+        {/* Header */}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl md:text-3xl font-bold font-poppins">History Log</h1>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold font-poppins">History Logs</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Track user authentication and system activity
+            </p>
+          </div>
           <Button
-            onClick={fetchActivityLogs}
+            onClick={fetchLogs}
             variant="outline"
             size="sm"
             disabled={loading}
@@ -489,91 +521,182 @@ export default function HistoryLogPage() {
           </Button>
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg md:text-xl">Recent Transactions</CardTitle>
-            <CardDescription>
-              {loading
-                ? "Loading transactions..."
-                : `Showing ${activityLogs.length} transactions`}
-            </CardDescription>
+        {/* Stats */}
+        {!loading && !error && <StatsBar logs={logs} />}
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by username, IP, module..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-shrink-0">
+            {(["all", "login", "logout"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setActionFilter(f)}
+                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors capitalize ${
+                  actionFilter === f
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-background hover:bg-muted border-border text-muted-foreground"
+                }`}
+              >
+                {f === "all" ? "All Events" : f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Card */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg md:text-xl flex items-center gap-2">
+                  <History className="h-5 w-5 text-blue-600" />
+                  Audit Trail
+                </CardTitle>
+                <CardDescription className="mt-0.5">
+                  {loading
+                    ? "Loading..."
+                    : `${filtered.length} event${filtered.length !== 1 ? "s" : ""} found`}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="p-0 md:p-6 md:pt-0">
             {loading ? (
-              <div className="flex items-center justify-center py-12 px-4">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <span className="ml-3 text-muted-foreground text-sm">Loading activity logs...</span>
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                <span className="text-sm text-muted-foreground">Loading history logs...</span>
               </div>
             ) : error ? (
               <div className="text-center py-12 px-4">
-                <p className="text-destructive font-semibold mb-2">Error loading data</p>
+                <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-3">
+                  <X className="h-6 w-6 text-destructive" />
+                </div>
+                <p className="font-semibold text-destructive mb-1">Failed to load data</p>
                 <p className="text-sm text-muted-foreground mb-4">{error}</p>
-                <Button onClick={fetchActivityLogs} variant="outline">Try Again</Button>
+                <Button onClick={fetchLogs} variant="outline" size="sm">Try Again</Button>
               </div>
-            ) : activityLogs.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground px-4">
-                No transactions found
+                <History className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No events found</p>
+                <p className="text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : (
               <>
-                {/* Mobile: Card List */}
-                <div className="md:hidden space-y-3 px-4 pt-2">
-                  {paginatedLogs.map((activity) => (
-                    <ActivityCard
-                      key={`${activity.transactionId}-${activity.id}`}
-                      activity={activity}
-                    />
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-3 px-4 pt-3 pb-1">
+                  {paginated.map((log) => (
+                    <HistoryCard key={log.id} log={log} />
                   ))}
                 </div>
 
-                {/* Desktop: Table */}
+                {/* Desktop Table */}
                 <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Transaction ID</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">User</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">Action</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">Module</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">Description</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">IP Address</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">Browser</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wide">Timestamp</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedLogs.map((activity) => (
-                        <TableRow key={`${activity.transactionId}-${activity.id}`}>
-                          <TableCell className="font-mono text-xs">
-                            {activity.transactionId}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getTypeBadge(activity.type)}>
-                              {activity.type.replace("_", " ")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{formatDate(activity.date)}</TableCell>
-                          <TableCell className="max-w-xs truncate">{activity.description}</TableCell>
-                          <TableCell>{activity.category}</TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(activity.amount)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusBadge(activity.status)}>
-                              {activity.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {paginated.map((log) => {
+                        const actionCfg = getActionConfig(log.action);
+                        const { date, time } = formatDateTime(log.created_at);
+                        const browser = parseUserAgent(log.user_agent);
+                        const avatarColor = getUsernameColor(log.username);
+
+                        return (
+                          <TableRow key={log.id} className="hover:bg-muted/30 transition-colors group">
+                            {/* User */}
+                            <TableCell>
+                              <div className="flex items-center gap-2.5">
+                                <div className={`h-8 w-8 rounded-full ${avatarColor} flex items-center justify-center flex-shrink-0`}>
+                                  <span className="text-white text-xs font-bold uppercase">
+                                    {log.username.charAt(0)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium capitalize">{log.username}</p>
+                                  <p className="text-xs text-muted-foreground">UID #{log.user_id}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            {/* Action */}
+                            <TableCell>
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${actionCfg.color}`}>
+                                {actionCfg.icon}
+                                {actionCfg.label}
+                              </span>
+                            </TableCell>
+
+                            {/* Module */}
+                            <TableCell>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${getModuleBadgeColor(log.module)}`}>
+                                <Shield className="h-3 w-3" />
+                                {log.module}
+                              </span>
+                            </TableCell>
+
+                            {/* Description */}
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">{log.description}</span>
+                            </TableCell>
+
+                            {/* IP */}
+                            <TableCell>
+                              <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+                                <Globe className="h-3 w-3 flex-shrink-0" />
+                                {log.ip_address}
+                              </div>
+                            </TableCell>
+
+                            {/* Browser */}
+                            <TableCell>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Monitor className="h-3 w-3 flex-shrink-0" />
+                                {browser}
+                              </div>
+                            </TableCell>
+
+                            {/* Timestamp */}
+                            <TableCell>
+                              <div className="flex items-start gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="text-xs font-medium">{date}</p>
+                                  <p className="text-xs text-muted-foreground">{time}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
 
-                {/* Pagination — both mobile & desktop */}
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={activityLogs.length}
+                  totalItems={filtered.length}
                   onPageChange={handlePageChange}
                 />
               </>
