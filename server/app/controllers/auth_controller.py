@@ -57,3 +57,35 @@ def log_in():
             "message": "An error occurred",
             "error": str(e)
         }), 500
+
+def log_out():
+    ...
+    try:
+        data = request.get_json()
+        
+        ip_address = request.remote_addr
+        user_agent = request.headers.get("User-Agent")
+          # insert activity log
+        insert_activity_logs_db(
+            data["id"],
+            {
+                "username": data["username"],
+                "action": "logout",
+                "module": "authentication",
+                "description": f"{data['username']} logged out",
+                "ip_address": ip_address,
+                "user_agent": user_agent
+            }
+        )
+        return jsonify({
+            "message": "Logout successful",
+            "user": {
+                "id": data["id"],
+                "username": data["username"],
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "message": "An error occurred",
+            "error": str(e)
+        }), 500
