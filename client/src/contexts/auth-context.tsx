@@ -11,7 +11,7 @@ type AuthContextType = {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔥 hydrate user on refresh
+  // hydrate user on refresh
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -39,19 +39,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(user);
   };
 
-  const logout = () => {
-    localStorage.clear();
-    setUser(null);
+  const logout = async () => {
+    try {
+      if (user) {
+        await fetch(
+          "https://barangayfinancetrackbackenddeployment.onrender.com/api/logout",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: user.id,
+              username: user.username,
+            }),
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      localStorage.clear();
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        user, 
-        isLoading, 
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
         isAuthenticated: !!user,
-        login, 
-        logout 
+        login,
+        logout,
       }}
     >
       {children}

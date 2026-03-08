@@ -109,9 +109,9 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.clear();
-    logout?.();
+    await logout?.();
     setLocation("/login");
   };
 
