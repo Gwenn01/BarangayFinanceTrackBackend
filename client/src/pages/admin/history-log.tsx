@@ -133,14 +133,13 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
         </Link>
         <Link href="/admin/history-log">
           <div
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer ${
-              currentPage === "history" ? "bg-blue-600 text-white" : "hover:bg-muted"
-            }`}
+            className="flex items-center gap-2 p-2 rounded bg-blue-600 text-white cursor-pointer"
             onClick={() => setSidebarOpen(false)}
           >
             <History className="h-4 w-4 flex-shrink-0" /> History Logs
           </div>
         </Link>
+
 
         <div className="border-t my-3" />
         <button
@@ -374,7 +373,7 @@ function Pagination({ currentPage, totalPages, totalItems, onPageChange }: Pagin
 /* =======================
    PAGE
 ======================= */
-export default function ActivityLogPage() {
+export default function HistoryLogPage() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -474,10 +473,10 @@ export default function ActivityLogPage() {
   };
 
   return (
-    <AdminLayout currentPage="activity">
+    <AdminLayout currentPage="history">
       <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl md:text-3xl font-bold font-poppins">Activity Log</h1>
+          <h1 className="text-2xl md:text-3xl font-bold font-poppins">History Log</h1>
           <Button
             onClick={fetchActivityLogs}
             variant="outline"

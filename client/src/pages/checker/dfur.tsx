@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Eye,
   Flag,
+  Check,
 } from "lucide-react";
 import { CheckerLayout } from "../../components/checker-layout";
 import { Button } from "../../components/ui/button";
@@ -56,6 +57,7 @@ type DfurProject = {
   review_status: "pending" | "approved" | "flagged";
   review_comment?: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 type ApiResponse = { data: DfurProject[]; message: string };
@@ -138,7 +140,7 @@ function ProjectCard({
   return (
     <div
       className={`border rounded-lg p-4 space-y-3 ${
-        project.review_status === "flagged" ? "bg-red-50 border-red-200" : "bg-card"
+        project.is_flagged === true ? "bg-red-500/20 border-red-500" : "bg-card"
       }`}
       data-testid={`row-dfur-${project.id}`}
     >
@@ -152,6 +154,7 @@ function ProjectCard({
         </Badge>
       </div>
 
+      
       {/* Project name */}
       <p className="font-semibold text-sm leading-snug">{project.project}</p>
 
@@ -374,6 +377,7 @@ export default function CheckerDFUR() {
                         <TableHead className="text-right">Incurred Cost</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Review Status</TableHead>
+                        <TableHead className="text-center">Is Flagged</TableHead>
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -386,7 +390,7 @@ export default function CheckerDFUR() {
                         </TableRow>
                       ) : (
                         projects.map((project) => (
-                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`}>
+                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`} className={`${project.is_flagged === true ? "bg-red-500/40" : ""}`}>
                             <TableCell className="font-mono text-sm">{project.transaction_id}</TableCell>
                             <TableCell className="font-medium max-w-[200px] truncate">{project.project}</TableCell>
                             <TableCell className="text-sm">{project.name_of_collection}</TableCell>
@@ -402,6 +406,7 @@ export default function CheckerDFUR() {
                                 {reviewLabel(project.review_status)}
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-center">{project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                             <TableCell>
                               <div className="flex gap-2 justify-center">
                                 <Button

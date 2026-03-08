@@ -46,6 +46,7 @@ import {
   Loader2,
   Menu,
   X,
+  History,
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { UserMenu } from "../../components/user-menu";
@@ -100,7 +101,7 @@ const roles = [
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  currentPage: "users" | "activity";
+  currentPage: "users" | "activity" | "history";
 }
 
 function AdminLayout({ children, currentPage }: AdminLayoutProps) {
@@ -155,6 +156,16 @@ function AdminLayout({ children, currentPage }: AdminLayoutProps) {
             onClick={() => setSidebarOpen(false)}
           >
             <Activity className="h-4 w-4 flex-shrink-0" /> Activity Log
+          </div>
+        </Link>
+        <Link href="/admin/history-log">
+          <div
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer ${
+              currentPage === "history" ? "bg-blue-600 text-white" : "hover:bg-muted"
+            }`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <History className="h-4 w-4 flex-shrink-0" /> History Logs
           </div>
         </Link>
 

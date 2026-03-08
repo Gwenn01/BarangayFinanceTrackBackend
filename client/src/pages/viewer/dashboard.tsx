@@ -62,6 +62,7 @@ type BackendCollection = {
   payor: string;
   or_number: string;
   remarks?: string;
+  is_flagged?: boolean; // <-- new field for flagged status
 };
 
 type BackendDisbursement = {
@@ -77,6 +78,7 @@ type BackendDisbursement = {
   payee: string;
   or_number: string;
   remarks?: string;
+  is_flagged?: boolean; // <-- new field for flagged status
 };
 
 // Frontend types for display
@@ -88,6 +90,7 @@ export type Collection = {
   payor: string;
   amount: string;
   created_at?: string;
+  is_flagged?: boolean;
 };
 
 export type Disbursement = {
@@ -98,6 +101,7 @@ export type Disbursement = {
   payee: string;
   amount: string;
   created_at?: string;
+  is_flagged?: boolean;
 };
 
 export type DfurProject = {
@@ -116,6 +120,7 @@ export type DfurProject = {
   remarks?: string;
   review_status?: "pending" | "approved" | "flagged";
   review_comment?: string;
+  is_flagged?: boolean;
 };
 
 export type DfurApiResponse = {
@@ -140,6 +145,7 @@ export function backendCollectionToFrontend(backend: BackendCollection): Collect
     nature_of_collection: backend.nature_of_collection,
     payor: backend.payor,
     amount: backend.amount.toString(),
+    is_flagged: backend.is_flagged,
   };
 }
 
@@ -151,6 +157,7 @@ export function backendDisbursementToFrontend(backend: BackendDisbursement): Dis
     nature_of_disbursement: backend.nature_of_disbursement,
     payee: backend.payee,
     amount: backend.amount.toString(),
+    is_flagged: backend.is_flagged,
   };
 }
 

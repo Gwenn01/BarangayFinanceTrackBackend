@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { ActivitySquare, ActivitySquareIcon, ArrowRight, BarChart3, BookOpen, FileText, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { ActivitySquare, ActivitySquareIcon, ArrowRight, BarChart3, BookOpen, FileText, Flag, Target, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { CheckerLayout } from "../../components/checker-layout";
 import { useBudgetEntries, useCollections, useDfurProjects, useDisbursements } from "@/hooks/useFinancialQueries";
 
@@ -49,7 +49,7 @@ export default function CheckerDashboard() {
     },
   ];
 
-    // All data-fetching is now one line each
+  // All data-fetching is now one line each
   const { data: collections,    isLoading: isLoadingCollections    } = useCollections();
   const { data: disbursements,  isLoading: isLoadingDisbursements  } = useDisbursements();
   const { data: dfurProjects,   isLoading: isLoadingDfurProjects   } = useDfurProjects();
@@ -62,6 +62,13 @@ export default function CheckerDashboard() {
   const utilizationRate    = totalCollections > 0
     ? ((totalDisbursements / totalCollections) * 100).toFixed(1)
     : "0";
+
+  /* ---- Flagged counts ---- */
+  const collectionFlagged   = collections?.filter(item => item.is_flagged === true).length  || 0;
+  const disbursementFlagged = disbursements?.filter(item => item.is_flagged === true).length || 0;
+  const dfurFlagged         = dfurProjects?.filter(item => item.is_flagged === true).length  || 0;
+  const totalFlagged        = collectionFlagged + disbursementFlagged + dfurFlagged;
+
 
   /* ---- Metric card definitions ---- */
   const metrics = [
@@ -76,14 +83,15 @@ export default function CheckerDashboard() {
       color: "amber",   navigateTo: "/checker/sre", isLoading: isLoadingDisbursements,
     },
     {
-      icon: ActivitySquareIcon,     value: formatCurrencyCompact(totalABO),
-      label: "Annual Budget Ordinance", sublabel: `${budgetEntries?.length || 0} entries · ${new Date().getFullYear()}`,
-      color: "indigo",  navigateTo: "/encoder/abo", isLoading: isLoadingBudgetEntries,
-    },
-    {
       icon: Target,       value: `${dfurProjects?.length || 0}`,
       label: "Projects",                sublabel: "Development fund projects",
       color: "violet",  navigateTo: "/checker/dfur", isLoading: isLoadingDfurProjects,
+    },
+    {
+      icon: Flag,         value: `${totalFlagged}`,
+      label: "Flagged Items",
+      sublabel: `${collectionFlagged} collections · ${disbursementFlagged} disbursements · ${dfurFlagged} DFUR`,
+      color: "red",     navigateTo: "/checker/sre", isLoading: isLoadingCollections || isLoadingDisbursements || isLoadingDfurProjects,
     },
   ];
 

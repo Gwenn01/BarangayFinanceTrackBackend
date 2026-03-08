@@ -1,7 +1,9 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { FileText, TrendingUp, ShieldCheck } from "lucide-react";
+import { FileText, TrendingUp, ShieldCheck, Wallet, TrendingDown, BookOpen, Target, ArrowRight, BarChart3, Flag } from "lucide-react";
 import { ApproverLayout } from "../../components/approver-layout";
+import { useBudgetEntries, useCollections, useDfurProjects, useDisbursements } from "@/hooks/useFinancialQueries";
+import { formatCurrencyCompact, safeParseAmount } from "../encoder/encoder-dashboard";
 
 export default function ApproverDashboard() {
   const modules = [
@@ -25,6 +27,53 @@ export default function ApproverDashboard() {
     },
   ];
 
+  const [, navigate] = useLocation();
+
+  // All data-fetching is now one line each
+  const { data: collections,    isLoading: isLoadingCollections    } = useCollections();
+  const { data: disbursements,  isLoading: isLoadingDisbursements  } = useDisbursements();
+  const { data: dfurProjects,   isLoading: isLoadingDfurProjects   } = useDfurProjects();
+  const { data: budgetEntries,  isLoading: isLoadingBudgetEntries  } = useBudgetEntries();
+
+  /* ---- Derived values ---- */
+  const totalCollections   = collections?.reduce((sum, c) => sum + safeParseAmount(c.amount), 0) || 0;
+  const totalDisbursements = disbursements?.reduce((sum, d) => sum + safeParseAmount(d.amount), 0) || 0;
+  const totalABO           = budgetEntries?.reduce((sum, e) => sum + safeParseAmount(e.amount), 0) || 0;
+  const utilizationRate    = totalCollections > 0
+    ? ((totalDisbursements / totalCollections) * 100).toFixed(1)
+    : "0";
+
+  /* ---- Flagged counts ---- */
+  const collectionFlagged   = collections?.filter(item => item.is_flagged === true).length  || 0;
+  const disbursementFlagged = disbursements?.filter(item => item.is_flagged === true).length || 0;
+  const dfurFlagged         = dfurProjects?.filter(item => item.is_flagged === true).length  || 0;
+  const totalFlagged        = collectionFlagged + disbursementFlagged + dfurFlagged;
+
+  /* ---- Metric card definitions ---- */
+  const metrics = [
+    {
+      icon: Wallet,       value: formatCurrencyCompact(totalCollections),
+      label: "Total Collections",       sublabel: `${collections?.length || 0} transactions`,
+      color: "blue",    navigateTo: "/approver/sre", isLoading: isLoadingCollections,
+    },
+    {
+      icon: TrendingDown, value: formatCurrencyCompact(totalDisbursements),
+      label: "Total Disbursements",     sublabel: `${disbursements?.length || 0} transactions`,
+      color: "amber",   navigateTo: "/approver/sre", isLoading: isLoadingDisbursements,
+    },
+    {
+      icon: Target,       value: `${dfurProjects?.length || 0}`,
+      label: "Projects",                sublabel: "Development fund projects",
+      color: "violet",  navigateTo: "/approver/dfur", isLoading: isLoadingDfurProjects,
+    },
+    {
+      icon: Flag,         value: `${totalFlagged}`,
+      label: "Flagged Items",
+      sublabel: `${collectionFlagged} collections · ${disbursementFlagged} disbursements · ${dfurFlagged} DFUR`,
+      color: "red",     navigateTo: "/approver/sre", isLoading: isLoadingCollections || isLoadingDisbursements || isLoadingDfurProjects,
+    },
+  ];
+
   return (
     <ApproverLayout>
       <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
@@ -38,35 +87,83 @@ export default function ApproverDashboard() {
           </p>
         </div>
 
-        {/* Module Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          {modules.map((module) => (
-            <Link key={module.id} href={module.href}>
-              <Card
-                className="hover-elevate active-elevate-2 cursor-pointer h-full transition-all active:scale-[0.98] touch-manipulation"
-                data-testid={`link-${module.id}-module`}
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {metrics.map((metric, index) => {
+            const Icon = metric.icon;
+            return (
+              <div
+                key={metric.label}
+                className={`
+                  relative group rounded-2xl p-4 sm:p-5 border bg-card overflow-hidden
+                  transition-all duration-200 cursor-pointer
+                  hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40 active:scale-[0.98]
+                  
+                `}
+                style={{ animationDelay: `${index * 0.08}s` }}
+                onClick={() => navigate(metric.navigateTo)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate(metric.navigateTo); }}
               >
-                <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
-                  <div
-                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg ${module.bgColor} flex items-center justify-center mb-3 sm:mb-4`}
-                  >
-                    <module.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${module.color}`} />
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-${metric.color}-50/30`} />
+
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-${metric.color}-100 shadow-sm`}>
+                    {metric.isLoading
+                      ? <div className={`w-5 h-5 rounded-full border-2 border-${metric.color}-300 border-t-${metric.color}-600 animate-spin`} />
+                      : <Icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${metric.color}-600`} />
+                    }
                   </div>
-                  <CardTitle className="text-base sm:text-xl leading-snug">
-                    {module.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm sm:text-base mt-1">
-                    {module.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-2 sm:pt-2">
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Click to start approving transactions
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  {/* Pulse badge for flagged card when there are flagged items */}
+                  {metric.color === "red" && totalFlagged > 0 && !metric.isLoading ? (
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                    </span>
+                  ) : (
+                    <ArrowRight className={`w-4 h-4 text-muted-foreground/30 group-hover:text-${metric.color}-500 group-hover:translate-x-0.5 transition-all duration-200`} />
+                  )}
+                </div>
+
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-0.5 tabular-nums">
+                  {metric.isLoading ? <div className="h-7 w-20 bg-muted animate-pulse rounded-md" /> : metric.value}
+                </div>
+                <div className="text-xs sm:text-sm font-semibold text-foreground/80 uppercase tracking-wide leading-tight">{metric.label}</div>
+                <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  {metric.isLoading ? <div className="h-3 w-20 bg-muted animate-pulse rounded" /> : metric.sublabel}
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground/40 group-hover:text-primary/60 transition-colors duration-200 flex items-center gap-1">
+                  <span>View details</span><ArrowRight className="w-3 h-3" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Budget Utilization Bar */}
+        <div className="rounded-2xl border bg-card p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">Budget Utilization</span>
+            </div>
+            <span className="text-sm font-bold tabular-nums text-foreground">{utilizationRate}%</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ease-out ${
+                parseFloat(utilizationRate) > 90 ? "bg-red-500"
+                : parseFloat(utilizationRate) > 70 ? "bg-amber-500"
+                : "bg-emerald-500"
+              }`}
+              style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+            <span>₱0</span>
+            <span>{formatCurrencyCompact(totalCollections)} total collected</span>
+          </div>
         </div>
 
         {/* Info Banner */}

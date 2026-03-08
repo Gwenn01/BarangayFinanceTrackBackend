@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   Wallet,
   BarChart3,
+  Check,
 } from "lucide-react";
 import { ReviewerLayout } from "../../components/reviewer-layout";
 import { Button } from "../../components/ui/button";
@@ -58,6 +59,7 @@ export type DfurProject = {
   reviewed_by?: number | null;
   remarks?: string;
   review_comment?: string;
+  is_flagged?: boolean;
 };
 
 type ApiResponse = {
@@ -167,7 +169,7 @@ export default function ReviewerDashboard() {
   // Mobile project card
   const ProjectCard = ({ project }: { project: DfurProject }) => (
     <div
-      className="rounded-xl border bg-white p-4 space-y-3 shadow-sm"
+      className={`rounded-xl border p-4 space-y-3 shadow-sm ${project.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-dfur-${project.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -453,6 +455,7 @@ export default function ReviewerDashboard() {
                         </TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Review</TableHead>
+                        <TableHead className="text-center">Is Flagged</TableHead> 
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -472,6 +475,7 @@ export default function ReviewerDashboard() {
                             key={project.id}
                             className="hover:bg-muted/30 transition-colors"
                             data-testid={`row-dfur-${project.id}`}
+                            className={`${project.is_flagged === true ? "bg-red-500/40" : ""}`}
                           >
                             <TableCell className="font-mono text-sm">
                               {project.transaction_id}
@@ -499,6 +503,7 @@ export default function ReviewerDashboard() {
                                 {formatStatusDisplay(project.status)}
                               </Badge>
                             </TableCell>
+
                             <TableCell>
                               <Badge
                                 className={getReviewStatusColor(
@@ -513,6 +518,7 @@ export default function ReviewerDashboard() {
                                   : "Flagged"}
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-center">{project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                             <TableCell>
                               <div className="flex gap-2 justify-center">
                                 <Button

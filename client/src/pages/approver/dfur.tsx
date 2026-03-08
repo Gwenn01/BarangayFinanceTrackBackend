@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Eye,
   Flag,
+  Check,
 } from "lucide-react";
 import { ApproverLayout } from "../../components/approver-layout";
 import { Button } from "../../components/ui/button";
@@ -54,6 +55,7 @@ type DfurProject = {
   review_status: "pending" | "approved" | "flagged";
   review_comment?: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 type ApiResponse = {
@@ -245,7 +247,7 @@ export default function ApproverDFUR() {
   // Mobile project card
   const ProjectCard = ({ project }: { project: DfurProject }) => (
     <div
-      className="rounded-lg border bg-white p-4 space-y-3"
+      className={`rounded-lg border p-4 space-y-3 ${project.is_flagged === true ? "bg-red-500/20" : "bg-card"} transition-all duration-200`}
       data-testid={`row-dfur-${project.id}`}
     >
       {/* Header row */}
@@ -260,6 +262,9 @@ export default function ApproverDFUR() {
           </Badge>
           <Badge className={getStatusColor(project.status)} variant="outline">
             {formatStatusDisplay(project.status)}
+          </Badge>
+          <Badge className={`${project.is_flagged ? "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20" : "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"}`} variant="outline">
+              {project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}
           </Badge>
         </div>
       </div>
@@ -424,6 +429,7 @@ export default function ApproverDFUR() {
                         <TableHead className="text-right">Approved Cost</TableHead>
                         <TableHead className="text-right">Incurred Cost</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Is Flagged</TableHead>
                         <TableHead>Review Status</TableHead>
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
@@ -437,7 +443,7 @@ export default function ApproverDFUR() {
                         </TableRow>
                       ) : (
                         projects.map((project) => (
-                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`}>
+                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}` } className={`${project.is_flagged ? "bg-red-500/40" : ""}`}>
                             <TableCell className="font-mono text-sm">{project.transaction_id}</TableCell>
                             <TableCell className="font-medium max-w-[200px] truncate">{project.project}</TableCell>
                             <TableCell className="text-sm">{project.name_of_collection}</TableCell>
@@ -448,6 +454,7 @@ export default function ApproverDFUR() {
                                 {formatStatusDisplay(project.status)}
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-center">{project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                             <TableCell>
                               <Badge className={getReviewStatusColor(project.review_status)} variant="outline">
                                 {project.review_status === "pending" ? "Pending" : project.review_status === "approved" ? "Approved" : "Flagged"}

@@ -41,6 +41,7 @@ import NotFound from "./pages/not-found";
 
 import "./App.css";
 import { ThemeProvider } from "./components/theme-provider";
+import HistoryLog from "./pages/admin/history-log";
 
 /* ===================== ROUTES ===================== */
 
@@ -182,6 +183,12 @@ function AppRoutes() {
       <Route path="/admin/activity-log">
         <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
           <ActivityLog />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/history-log">
+        <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+          <HistoryLog />
         </ProtectedRoute>
       </Route>
 

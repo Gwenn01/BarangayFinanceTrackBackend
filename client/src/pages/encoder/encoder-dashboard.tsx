@@ -14,7 +14,7 @@ import {
 
 /* -------------------- HELPERS -------------------- */
 
-const safeParseAmount = (value: unknown): number => {
+export const safeParseAmount = (value: unknown): number => {
   if (typeof value === "number") return isNaN(value) ? 0 : value;
   if (typeof value === "string") {
     const parsed = parseFloat(value.replace(/[^0-9.-]/g, ""));
@@ -23,7 +23,7 @@ const safeParseAmount = (value: unknown): number => {
   return 0;
 };
 
-const formatCurrencyCompact = (value: number) => {
+export const formatCurrencyCompact = (value: number) => {
   if (value >= 1000000) return `₱${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `₱${(value / 1000).toFixed(0)}K`;
   return `₱${value.toFixed(0)}`;

@@ -46,6 +46,7 @@ export type DfurProject = {
   reviewed_by?: number | null;
   remarks?: string;
   review_comment?: string;
+  is_flagged?: boolean; 
 };
 
 type ApiResponse = {
@@ -144,7 +145,7 @@ export default function ReviewerDFUR() {
   // Mobile project card (view-only, no approve/flag actions)
   const ProjectCard = ({ project }: { project: DfurProject }) => (
     <div
-      className="rounded-lg border bg-white p-4 space-y-3"
+      className={`rounded-lg border  p-4 space-y-3 ${project.is_flagged === true ? "bg-red-500/40" : ""}`}
       data-testid={`row-dfur-${project.id}`}
     >
       {/* Header */}
@@ -329,6 +330,7 @@ export default function ReviewerDFUR() {
                         <TableHead className="text-right">Incurred Cost</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Review</TableHead>
+                        <TableHead className="text-center">Is Flagged</TableHead>
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>

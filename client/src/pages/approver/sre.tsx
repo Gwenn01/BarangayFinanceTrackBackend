@@ -35,7 +35,7 @@ import {
 import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
 import { useToast } from "../../hooks/use-toast";
-import { Flag, CheckCircle2 } from "lucide-react";
+import { Flag, CheckCircle2, Check } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { format } from "date-fns";
 import { ApproverLayout } from "../../components/approver-layout";
@@ -57,7 +57,7 @@ type Collection = {
   fund_source: string;
   review_status: ReviewStatus;
   review_comment: string | null;
-  is_flagged: number;
+  is_flagged: boolean;
 };
 
 type Disbursement = {
@@ -72,7 +72,7 @@ type Disbursement = {
   fund_source: string;
   review_status: ReviewStatus;
   review_comment: string | null;
-  is_flagged: number;
+  is_flagged: boolean;
 };
 
 export default function ApproverSRE() {
@@ -265,7 +265,7 @@ export default function ApproverSRE() {
   // Reusable mobile card for a collection row
   const CollectionCard = ({ collection }: { collection: Collection }) => (
     <div
-      className={`rounded-lg border p-4 space-y-3 ${collection.is_flagged === 1 ? "bg-red-50 border-red-200" : "bg-white"}`}
+      className={`rounded-lg border p-4 space-y-3 ${collection.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-collection-${collection.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -321,7 +321,7 @@ export default function ApproverSRE() {
   // Reusable mobile card for a disbursement row
   const DisbursementCard = ({ disbursement }: { disbursement: Disbursement }) => (
     <div
-      className={`rounded-lg border p-4 space-y-3 ${disbursement.is_flagged === 1 ? "bg-red-50 border-red-200" : "bg-white"}`}
+      className={`rounded-lg border p-4 space-y-3 ${disbursement.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-disbursement-${disbursement.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -441,6 +441,7 @@ export default function ApproverSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -448,7 +449,7 @@ export default function ApproverSRE() {
                           {collections.map((collection) => (
                             <TableRow
                               key={collection.id}
-                              className={collection.is_flagged === 1 ? "bg-red-50" : ""}
+                              className={collection.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-collection-${collection.id}`}
                             >
                               <TableCell className="font-medium">{collection.transaction_id}</TableCell>
@@ -458,6 +459,7 @@ export default function ApproverSRE() {
                               <TableCell>{collection.or_number}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(collection.amount)}</TableCell>
                               <TableCell className="text-center">{getStatusBadge(collection.review_status)}</TableCell>
+                              <TableCell className="text-center">{collection.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-center">
                                 <div className="flex gap-2 justify-center">
                                   <Button
@@ -535,6 +537,7 @@ export default function ApproverSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -542,7 +545,7 @@ export default function ApproverSRE() {
                           {disbursements.map((disbursement) => (
                             <TableRow
                               key={disbursement.id}
-                              className={disbursement.is_flagged === 1 ? "bg-red-50" : ""}
+                              className={disbursement.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-disbursement-${disbursement.id}`}
                             >
                               <TableCell className="font-medium">{disbursement.transaction_id}</TableCell>
@@ -552,6 +555,7 @@ export default function ApproverSRE() {
                               <TableCell>{disbursement.or_number || "N/A"}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(disbursement.amount)}</TableCell>
                               <TableCell className="text-center">{getStatusBadge(disbursement.review_status)}</TableCell>
+                              <TableCell className="text-center">{disbursement.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-center">
                                 <div className="flex gap-2 justify-center">
                                   <Button

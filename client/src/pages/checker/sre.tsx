@@ -35,7 +35,7 @@ import {
 import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
 import { useToast } from "../../hooks/use-toast";
-import { Flag } from "lucide-react";
+import { Check, Flag } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { format } from "date-fns";
 import { CheckerLayout } from "../../components/checker-layout";
@@ -58,6 +58,7 @@ type Collection = {
   amount: string;
   review_status: ReviewStatus;
   review_comment?: string;
+  is_flagged?: boolean;
 };
 
 type Disbursement = {
@@ -70,6 +71,7 @@ type Disbursement = {
   amount: string;
   review_status: ReviewStatus;
   review_comment?: string;
+  is_flagged?: boolean;
 };
 
 /* -------------------- HELPERS -------------------- */
@@ -122,7 +124,7 @@ function CollectionCard({
   return (
     <div
       className={`border rounded-lg p-4 space-y-3 ${
-        collection.review_status === "flagged" ? "bg-red-50 border-red-200" : "bg-card"
+        collection.is_flagged === true ? "bg-red-500/20 border-red-500" : "bg-card"
       }`}
       data-testid={`row-collection-${collection.id}`}
     >
@@ -131,6 +133,7 @@ function CollectionCard({
           {collection.transaction_id}
         </span>
         {getStatusBadge(collection.review_status)}
+        <p>{collection.is_flagged === true && <Flag className="h-3.5 w-3.5 text-red-500" />}</p>
       </div>
 
       <p className="text-sm font-medium leading-snug">
@@ -173,7 +176,7 @@ function DisbursementCard({
   return (
     <div
       className={`border rounded-lg p-4 space-y-3 ${
-        disbursement.review_status === "flagged" ? "bg-red-50 border-red-200" : "bg-card"
+        disbursement.is_flagged === true ? "bg-red-500/20 border-red-500" : "bg-card"
       }`}
       data-testid={`row-disbursement-${disbursement.id}`}
     >
@@ -182,6 +185,7 @@ function DisbursementCard({
           {disbursement.transaction_id}
         </span>
         {getStatusBadge(disbursement.review_status)}
+        <p>{disbursement.is_flagged === true && <Flag className="h-3.5 w-3.5 text-red-500" />}</p>
       </div>
 
       <p className="text-sm font-medium leading-snug">
@@ -395,6 +399,7 @@ export default function CheckerSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -402,7 +407,7 @@ export default function CheckerSRE() {
                           {collections.map((collection) => (
                             <TableRow
                               key={collection.id}
-                              className={collection.review_status === "flagged" ? "bg-red-50" : ""}
+                              className={collection.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-collection-${collection.id}`}
                             >
                               <TableCell className="font-medium">{collection.transaction_id}</TableCell>
@@ -412,6 +417,7 @@ export default function CheckerSRE() {
                               <TableCell>{collection.or_number}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(collection.amount)}</TableCell>
                               <TableCell className="text-center">{getStatusBadge(collection.review_status)}</TableCell>
+                              <TableCell className="text-center">{collection.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-center">
                                 <Button
                                   size="sm"
@@ -484,6 +490,7 @@ export default function CheckerSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -491,7 +498,7 @@ export default function CheckerSRE() {
                           {disbursements.map((disbursement) => (
                             <TableRow
                               key={disbursement.id}
-                              className={disbursement.review_status === "flagged" ? "bg-red-50" : ""}
+                              className={disbursement.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-disbursement-${disbursement.id}`}
                             >
                               <TableCell className="font-medium">{disbursement.transaction_id}</TableCell>
@@ -501,6 +508,7 @@ export default function CheckerSRE() {
                               <TableCell>{disbursement.or_number || "N/A"}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(disbursement.amount)}</TableCell>
                               <TableCell className="text-center">{getStatusBadge(disbursement.review_status)}</TableCell>
+                              <TableCell className="text-center">{disbursement.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-center">
                                 <Button
                                   size="sm"
