@@ -19,6 +19,7 @@ from app.model.encoder.disbursements_db import (
 from app.model.encoder.dfur_db import(
     get_all_dfur_db,
 ) 
+from app.model.general.activity_logs import get_activity_logs_db
 
 def get_all_users_controller():
     try:
@@ -125,5 +126,14 @@ def get_all_docs_controller():
         ...
         docs = handle_docs()
         return jsonify(docs), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
+    
+# activity or history logs ===================
+def get_activity_history_log_controller():
+    try:
+        ...
+        activity_logs = get_activity_logs_db()
+        return jsonify(activity_logs), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 404

@@ -1,6 +1,7 @@
 from flask import request, jsonify
 from app.model.get_user import get_user_by_username
 from app.utils.hash_password import verify_password
+from app.model.general.activity_logs import insert_activity_logs_db
 
 def log_in():
     try:
@@ -24,6 +25,24 @@ def log_in():
         if not user or not verify_password(password, user["password"]):
             return jsonify({"message": "Invalid password"}), 401
 
+        # insert history
+         # get client information
+        ip_address = request.remote_addr
+        user_agent = request.headers.get("User-Agent")
+
+        # insert activity log
+        insert_activity_logs_db(
+            user["id"],
+            {
+                "username": user["username"],
+                "action": "login",
+                "module": "authentication",
+                "description": f"{user['username']} logged in",
+                "ip_address": ip_address,
+                "user_agent": user_agent
+            }
+        )
+        
         return jsonify({
             "message": "Login successful",
             "user": {

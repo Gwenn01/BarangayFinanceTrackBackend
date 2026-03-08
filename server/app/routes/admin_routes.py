@@ -4,7 +4,8 @@ from app.controllers.admin_controller import (
     add_user_controller,
     edit_user_controller,
     delete_user_controller,
-    get_all_docs_controller
+    get_all_docs_controller,
+    get_activity_history_log_controller
 )
 
 admin_bp = Blueprint("admin_bp", __name__)
@@ -36,3 +37,7 @@ def delete_user():
 @admin_bp.route('get-all-docs', methods=['GET'])
 def get_all_docs():
     return get_all_docs_controller()
+
+@admin_bp.route('get-activity-history-log', methods=['GET'])
+def get_activity_history_log():
+    return get_activity_history_log_controller()
