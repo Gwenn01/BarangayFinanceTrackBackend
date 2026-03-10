@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -47,6 +47,8 @@ import { EncoderLayout } from "../../components/encoder-layout";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "https://barangayfinancetrackbackenddeployment.onrender.com/api";
+
+const ROWS_PER_PAGE = 10;
 
 /* -------------------- TYPES -------------------- */
 
@@ -154,11 +156,105 @@ const formatCurrency = (value: string) => {
  */
 function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): string {
   if (!dateStr) return fallback;
-  // Try ISO parse first, then plain Date constructor
   let date = parseISO(dateStr);
   if (!isValid(date)) date = new Date(dateStr);
   if (!isValid(date)) return fallback;
   return format(date, "MMM dd, yyyy");
+}
+
+/* -------------------- PAGINATION COMPONENT -------------------- */
+
+function Pagination({
+  currentPage,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  // Build page number array with ellipsis
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3 border-t">
+      <p className="text-sm text-muted-foreground order-2 sm:order-1">
+        Showing <span className="font-medium">{startItem}</span>–
+        <span className="font-medium">{endItem}</span> of{" "}
+        <span className="font-medium">{totalItems}</span> entries
+      </p>
+
+      <div className="flex items-center gap-1 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        {getPageNumbers().map((page, idx) =>
+          page === "..." ? (
+            <span
+              key={`ellipsis-${idx}`}
+              className="h-8 w-8 flex items-center justify-center text-sm text-muted-foreground"
+            >
+              …
+            </span>
+          ) : (
+            <Button
+              key={page}
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-8 p-0 text-sm"
+              onClick={() => onPageChange(page as number)}
+              aria-label={`Page ${page}`}
+              aria-current={page === currentPage ? "page" : undefined}
+            >
+              {page}
+            </Button>
+          )
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          aria-label="Next page"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 /* -------------------- MOBILE ENTRY CARD -------------------- */
@@ -245,6 +341,7 @@ export default function ABO() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEntry, setSelectedEntry] = useState<BudgetEntry | undefined>(undefined);
   const [entryToDelete, setEntryToDelete] = useState<BudgetEntry | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
   const currentUserId = 1;
@@ -267,6 +364,18 @@ export default function ABO() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+
+  // Reset to page 1 whenever entries change (e.g. after add/delete)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entries.length]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(entries.length / ROWS_PER_PAGE);
+  const paginatedEntries = entries.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
 
   // Create mutation
   const createMutation = useMutation({
@@ -426,8 +535,8 @@ export default function ABO() {
             ) : (
               <>
                 {/* Mobile: Card List */}
-                <div className="md:hidden space-y-3 px-0 pt-2 pb-4">
-                  {entries.map((entry) => (
+                <div className="md:hidden space-y-3 px-0 pt-2 pb-2">
+                  {paginatedEntries.map((entry) => (
                     <EntryCard
                       key={entry.id}
                       entry={entry}
@@ -435,13 +544,25 @@ export default function ABO() {
                       onDelete={handleDelete}
                     />
                   ))}
-                  {/* Mobile total footer */}
-                  <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                    <span className="text-sm font-semibold">Total Budget Allocation</span>
-                    <span className="font-bold text-chart-1">
-                      {formatCurrency(totalAllocated.toString())}
-                    </span>
-                  </div>
+                </div>
+
+                {/* Mobile pagination */}
+                <div className="md:hidden">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={entries.length}
+                    itemsPerPage={ROWS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+
+                {/* Mobile total footer */}
+                <div className="md:hidden border rounded-lg px-4 py-3 mt-3 bg-muted/40 flex justify-between items-center">
+                  <span className="text-sm font-semibold">Total Budget Allocation</span>
+                  <span className="font-bold text-chart-1">
+                    {formatCurrency(totalAllocated.toString())}
+                  </span>
                 </div>
 
                 {/* Desktop: Table */}
@@ -459,7 +580,7 @@ export default function ABO() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {entries.map((entry) => (
+                      {paginatedEntries.map((entry) => (
                         <TableRow key={entry.id} data-testid={`row-entry-${entry.id}`}>
                           <TableCell className="font-medium">
                             {entry.transactionId}
@@ -516,6 +637,15 @@ export default function ABO() {
                       </TableRow>
                     </TableFooter>
                   </Table>
+
+                  {/* Desktop pagination */}
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={entries.length}
+                    itemsPerPage={ROWS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
               </>
             )}

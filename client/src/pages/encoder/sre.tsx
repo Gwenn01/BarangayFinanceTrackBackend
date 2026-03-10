@@ -7,6 +7,9 @@ import {
   TrendingDown,
   Edit,
   Trash2,
+  Flag,
+  Check,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { EncoderLayout } from "../../components/encoder-layout";
@@ -36,6 +39,7 @@ import {
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { CollectionForm } from "../../components/collection-form";
 import { DisbursementForm } from "../../components/disbursement-form";
+import { ExcelUploadDialog } from "../../components/excel-upload-dialog";
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { api, apiCall } from "../../utils/api";
@@ -56,6 +60,7 @@ type BackendCollection = {
   payor: string;
   or_number: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 type BackendDisbursement = {
@@ -71,6 +76,7 @@ type BackendDisbursement = {
   payee: string;
   or_number: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 /* -------------------- FRONTEND TYPES -------------------- */
@@ -88,6 +94,7 @@ export type Collection = {
   purpose?: string;
   fundSource: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 export type Disbursement = {
@@ -103,6 +110,7 @@ export type Disbursement = {
   programDescription?: string;
   fundSource: string;
   remarks?: string;
+  is_flagged?: boolean;
 };
 
 type ViewType = "collection" | "disbursement";
@@ -123,6 +131,7 @@ function backendCollectionToFrontend(backend: BackendCollection): Collection {
     purpose: backend.purpose,
     fundSource: backend.fund_source,
     remarks: backend.remarks,
+    is_flagged: backend.is_flagged,
   };
 }
 
@@ -142,6 +151,7 @@ function backendDisbursementToFrontend(
     programDescription: backend.program_description,
     fundSource: backend.fund_source,
     remarks: backend.remarks,
+    is_flagged: backend.is_flagged,
   };
 }
 
@@ -164,7 +174,7 @@ function CollectionCard({
 }) {
   return (
     <div
-      className="border rounded-lg p-4 space-y-3 bg-card"
+      className={`  border rounded-lg p-4 space-y-3 ${collection.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-collection-${collection.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -254,7 +264,7 @@ function DisbursementCard({
 }) {
   return (
     <div
-      className="border rounded-lg p-4 space-y-3 bg-card"
+      className={`border rounded-lg p-4 space-y-3 ${disbursement.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-disbursement-${disbursement.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -347,6 +357,7 @@ export default function SRE() {
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const [deleteDisbursementId, setDeleteDisbursementId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const { toast } = useToast();
 
   /* Fetch collections */
@@ -360,9 +371,9 @@ export default function SRE() {
       return [];
     },
     staleTime: 0,
-    refetchOnMount: "always",  
-    refetchOnWindowFocus: true, 
-    refetchOnReconnect: true,  
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   /* Fetch disbursements */
@@ -379,7 +390,6 @@ export default function SRE() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    
   });
 
   /* Delete collection */
@@ -389,29 +399,20 @@ export default function SRE() {
         method: "DELETE",
         body: JSON.stringify({ collection_id: parseInt(id) }),
       });
-
       if (result.error) throw new Error(result.error);
       return id;
     },
-
     onSuccess: (deletedId) => {
-
-      // ✅ instantly remove from UI
       queryClient.setQueryData(["collections"], (old: Collection[] = []) =>
         old.filter((item) => item.id !== deletedId)
       );
-
-      // ✅ also refetch from server to stay synced
       queryClient.invalidateQueries({ queryKey: ["collections"] });
-
       toast({
         title: "Collection Deleted",
         description: "Collection transaction has been successfully deleted.",
       });
-
       setDeleteCollectionId(null);
     },
-
     onError: (error: Error) => {
       toast({
         variant: "destructive",
@@ -428,29 +429,20 @@ export default function SRE() {
         method: "DELETE",
         body: JSON.stringify({ disbursement_id: parseInt(id) }),
       });
-
       if (result.error) throw new Error(result.error);
       return id;
     },
-
     onSuccess: (deletedId) => {
-
-      // ✅ instantly update UI
       queryClient.setQueryData(["disbursements"], (old: Disbursement[] = []) =>
         old.filter((item) => item.id !== deletedId)
       );
-
-      // ✅ ensure backend sync
       queryClient.invalidateQueries({ queryKey: ["disbursements"] });
-
       toast({
         title: "Disbursement Deleted",
         description: "Disbursement transaction has been successfully deleted.",
       });
-
       setDeleteDisbursementId(null);
     },
-
     onError: (error: Error) => {
       toast({
         variant: "destructive",
@@ -506,7 +498,7 @@ export default function SRE() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
+            <h1 className="text-xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
               Statement of Receipts &amp; Expenditures
               <span className="block md:inline md:ml-2 text-lg md:text-3xl">(SRE)</span>
             </h1>
@@ -562,7 +554,7 @@ export default function SRE() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-2">
               <div>
                 <Label htmlFor="start-date" className="text-sm">Start Date</Label>
                 <Input
@@ -590,16 +582,16 @@ export default function SRE() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid gap-3 md:gap-6 grid-cols-1 sm:grid-cols-3">
+        <div className="grid gap-3 md:gap-6 grid-cols-2 sm:grid-cols-3">
           <Card className="bg-gradient-to-br from-chart-1/5 to-chart-1/10 shadow-lg">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                 Total Receipts
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p
-                className="text-2xl md:text-3xl font-bold text-chart-1"
+                className="text-lg md:text-3xl font-bold text-chart-1 text-wrap"
                 data-testid="text-total-receipts"
               >
                 {formatCurrency(totalReceipts)}
@@ -609,13 +601,13 @@ export default function SRE() {
 
           <Card className="bg-gradient-to-br from-destructive/5 to-destructive/10 shadow-lg">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                 Total Expenditures
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p
-                className="text-2xl md:text-3xl font-bold text-destructive"
+                className="text-lg md:text-3xl font-bold text-destructive text-wrap"
                 data-testid="text-total-expenditures"
               >
                 {formatCurrency(totalExpenditures)}
@@ -625,13 +617,13 @@ export default function SRE() {
 
           <Card className="bg-gradient-to-br from-chart-3/5 to-chart-3/10 shadow-lg">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                 Net Balance
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p
-                className={`text-2xl md:text-3xl font-bold ${netBalance >= 0 ? "text-chart-1" : "text-destructive"}`}
+                className={`text-lg md:text-3xl font-bold ${netBalance >= 0 ? "text-chart-1" : "text-destructive"} text-wrap`}
                 data-testid="text-net-balance"
               >
                 {formatCurrency(netBalance)}
@@ -640,14 +632,31 @@ export default function SRE() {
           </Card>
         </div>
 
-        {/* Add Form Button */}
-        <div className="flex justify-end">
+        {/* Add Form Button + Upload Excel */}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setIsUploadDialogOpen(true)}
+            data-testid="button-upload-excel"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-green-600" />
+            <span className="hidden sm:inline">Upload Excel</span>
+            <span className="sm:hidden">Upload</span>
+          </Button>
           {activeView === "collection" ? (
             <CollectionForm />
           ) : (
             <DisbursementForm />
           )}
         </div>
+
+        {/* Excel Upload Dialog */}
+        <ExcelUploadDialog
+          type={activeView}
+          open={isUploadDialogOpen}
+          onOpenChange={setIsUploadDialogOpen}
+        />
 
         {/* ==================== COLLECTION TABLE/CARDS ==================== */}
         {activeView === "collection" && (
@@ -702,6 +711,7 @@ export default function SRE() {
                           <TableHead>Nature of Collection</TableHead>
                           <TableHead>Payor</TableHead>
                           <TableHead>OR Number</TableHead>
+                          <TableHead className="text-center">Is Flagged</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
@@ -715,7 +725,7 @@ export default function SRE() {
                           </TableRow>
                         ) : (
                           filteredCollections.map((collection) => (
-                            <TableRow key={collection.id} data-testid={`row-collection-${collection.id}`}>
+                            <TableRow key={collection.id} data-testid={`row-collection-${collection.id}`} className={`${collection.is_flagged === true ? "bg-red-500/20" : ""}`}>
                               <TableCell className="font-medium" data-testid={`text-transaction-id-${collection.id}`}>
                                 {collection.transactionId}
                               </TableCell>
@@ -731,6 +741,7 @@ export default function SRE() {
                               <TableCell data-testid={`text-or-number-${collection.id}`}>
                                 {collection.orNumber}
                               </TableCell>
+                              <TableCell className="text-center">{collection.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-right font-semibold text-chart-1" data-testid={`text-amount-${collection.id}`}>
                                 {formatCurrency(parseFloat(collection.amount))}
                               </TableCell>
@@ -760,7 +771,7 @@ export default function SRE() {
                       </TableBody>
                       <TableFooter>
                         <TableRow>
-                          <TableCell colSpan={5} className="font-semibold">
+                          <TableCell colSpan={6} className="font-semibold">
                             Total Collections
                           </TableCell>
                           <TableCell className="text-right font-bold text-chart-1">
@@ -830,6 +841,7 @@ export default function SRE() {
                           <TableHead>Nature of Disbursement</TableHead>
                           <TableHead>Payee</TableHead>
                           <TableHead>DV Number</TableHead>
+                          <TableHead className="text-center">Is Flagged</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
@@ -843,7 +855,7 @@ export default function SRE() {
                           </TableRow>
                         ) : (
                           filteredDisbursements.map((disbursement) => (
-                            <TableRow key={disbursement.id} data-testid={`row-disbursement-${disbursement.id}`}>
+                            <TableRow key={disbursement.id} data-testid={`row-disbursement-${disbursement.id}`} className={`${disbursement.is_flagged === true ? "bg-red-500/20" : ""}`}>
                               <TableCell className="font-medium" data-testid={`text-transaction-id-${disbursement.id}`}>
                                 {disbursement.transactionId}
                               </TableCell>
@@ -859,6 +871,7 @@ export default function SRE() {
                               <TableCell data-testid={`text-dv-number-${disbursement.id}`}>
                                 {disbursement.dvNumber}
                               </TableCell>
+                              <TableCell className="text-center">{disbursement.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
                               <TableCell className="text-right font-semibold text-destructive" data-testid={`text-amount-${disbursement.id}`}>
                                 {formatCurrency(parseFloat(disbursement.amount))}
                               </TableCell>
@@ -888,7 +901,7 @@ export default function SRE() {
                       </TableBody>
                       <TableFooter>
                         <TableRow>
-                          <TableCell colSpan={5} className="font-semibold">
+                          <TableCell colSpan={6} className="font-semibold">
                             Total Disbursements
                           </TableCell>
                           <TableCell className="text-right font-bold text-destructive">
