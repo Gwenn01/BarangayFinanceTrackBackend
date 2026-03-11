@@ -10,6 +10,8 @@ import {
   Flag,
   Check,
   FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { EncoderLayout } from "../../components/encoder-layout";
@@ -39,11 +41,12 @@ import {
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { CollectionForm } from "../../components/collection-form";
 import { DisbursementForm } from "../../components/disbursement-form";
-import { ExcelUploadDialog } from "../../components/excel-upload-dialog";
+import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { api, apiCall } from "../../utils/api";
 import { exportSREToPDF } from "../../utils/exportSREToPDF";
+import { useAuth } from "../../contexts/auth-context";
 
 /* -------------------- BACKEND TYPES -------------------- */
 
@@ -163,6 +166,94 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+/* -------------------- PAGINATION -------------------- */
+
+function Pagination({
+  currentPage,
+  totalPages,
+  totalItems,
+  rowsPerPage,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const startItem = (currentPage - 1) * rowsPerPage + 1;
+  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-3 border-t">
+      <p className="text-xs text-muted-foreground order-2 sm:order-1">
+        Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
+        <span className="font-medium">{totalItems}</span> records
+      </p>
+      <div className="flex items-center gap-1 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          data-testid="button-prev-page"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        {getPageNumbers().map((page, idx) =>
+          page === "..." ? (
+            <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm">
+              …
+            </span>
+          ) : (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8 text-xs"
+              onClick={() => onPageChange(page as number)}
+              data-testid={`button-page-${page}`}
+            >
+              {page}
+            </Button>
+          )
+        )}
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          data-testid="button-next-page"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- MOBILE COLLECTION CARD -------------------- */
 
 function CollectionCard({
@@ -174,7 +265,7 @@ function CollectionCard({
 }) {
   return (
     <div
-      className={`  border rounded-lg p-4 space-y-3 ${collection.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
+      className={`border rounded-lg p-4 space-y-3 ${collection.is_flagged === true ? "bg-red-500/20 border-red-500" : ""}`}
       data-testid={`row-collection-${collection.id}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -200,25 +291,16 @@ function CollectionCard({
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-        <span
-          className="truncate"
-          data-testid={`text-payor-${collection.id}`}
-        >
+        <span className="truncate" data-testid={`text-payor-${collection.id}`}>
           {collection.payor}
         </span>
-        <span
-          className="flex-shrink-0"
-          data-testid={`text-date-${collection.id}`}
-        >
+        <span className="flex-shrink-0" data-testid={`text-date-${collection.id}`}>
           {format(new Date(collection.transactionDate), "MMM dd, yyyy")}
         </span>
       </div>
 
       {collection.orNumber && (
-        <p
-          className="text-xs text-muted-foreground"
-          data-testid={`text-or-number-${collection.id}`}
-        >
+        <p className="text-xs text-muted-foreground" data-testid={`text-or-number-${collection.id}`}>
           OR: {collection.orNumber}
         </p>
       )}
@@ -290,25 +372,16 @@ function DisbursementCard({
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-        <span
-          className="truncate"
-          data-testid={`text-payee-${disbursement.id}`}
-        >
+        <span className="truncate" data-testid={`text-payee-${disbursement.id}`}>
           {disbursement.payee}
         </span>
-        <span
-          className="flex-shrink-0"
-          data-testid={`text-date-${disbursement.id}`}
-        >
+        <span className="flex-shrink-0" data-testid={`text-date-${disbursement.id}`}>
           {format(new Date(disbursement.transactionDate), "MMM dd, yyyy")}
         </span>
       </div>
 
       {disbursement.dvNumber && (
-        <p
-          className="text-xs text-muted-foreground"
-          data-testid={`text-dv-number-${disbursement.id}`}
-        >
+        <p className="text-xs text-muted-foreground" data-testid={`text-dv-number-${disbursement.id}`}>
           DV: {disbursement.dvNumber}
         </p>
       )}
@@ -345,7 +418,10 @@ function DisbursementCard({
 
 /* -------------------- PAGE -------------------- */
 
+const ROWS_PER_PAGE = 10;
+
 export default function SRE() {
+  const { user } = useAuth();
   const currentDate = new Date();
   const [startDate, setStartDate] = useState(
     format(startOfMonth(currentDate), "yyyy-MM-dd")
@@ -358,6 +434,8 @@ export default function SRE() {
   const [deleteDisbursementId, setDeleteDisbursementId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [collectionPage, setCollectionPage] = useState(1);
+  const [disbursementPage, setDisbursementPage] = useState(1);
   const { toast } = useToast();
 
   /* Fetch collections */
@@ -463,6 +541,38 @@ export default function SRE() {
     return date >= new Date(startDate) && date <= new Date(endDate);
   });
 
+  /* Pagination derived values */
+  const collectionTotalPages = Math.ceil(filteredCollections.length / ROWS_PER_PAGE);
+  const paginatedCollections = filteredCollections.slice(
+    (collectionPage - 1) * ROWS_PER_PAGE,
+    collectionPage * ROWS_PER_PAGE
+  );
+
+  const disbursementTotalPages = Math.ceil(filteredDisbursements.length / ROWS_PER_PAGE);
+  const paginatedDisbursements = filteredDisbursements.slice(
+    (disbursementPage - 1) * ROWS_PER_PAGE,
+    disbursementPage * ROWS_PER_PAGE
+  );
+
+  /* Reset pages when date filter changes */
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    setCollectionPage(1);
+    setDisbursementPage(1);
+  };
+  const handleEndDateChange = (val: string) => {
+    setEndDate(val);
+    setCollectionPage(1);
+    setDisbursementPage(1);
+  };
+
+  /* Reset page when switching views */
+  const handleViewChange = (view: ViewType) => {
+    setActiveView(view);
+    setCollectionPage(1);
+    setDisbursementPage(1);
+  };
+
   const totalReceipts = filteredCollections.reduce((sum, c) => sum + parseFloat(c.amount), 0);
   const totalExpenditures = filteredDisbursements.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netBalance = totalReceipts - totalExpenditures;
@@ -528,7 +638,7 @@ export default function SRE() {
           <Button
             variant={activeView === "collection" ? "default" : "outline"}
             className="flex-1 gap-2"
-            onClick={() => setActiveView("collection")}
+            onClick={() => handleViewChange("collection")}
             data-testid="button-collection"
           >
             <TrendingUp className="h-4 w-4" />
@@ -537,7 +647,7 @@ export default function SRE() {
           <Button
             variant={activeView === "disbursement" ? "default" : "outline"}
             className="flex-1 gap-2"
-            onClick={() => setActiveView("disbursement")}
+            onClick={() => handleViewChange("disbursement")}
             data-testid="button-disbursement"
           >
             <TrendingDown className="h-4 w-4" />
@@ -561,7 +671,7 @@ export default function SRE() {
                   id="start-date"
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
                   data-testid="input-start-date"
                   className="mt-1"
                 />
@@ -572,7 +682,7 @@ export default function SRE() {
                   id="end-date"
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
                   data-testid="input-end-date"
                   className="mt-1"
                 />
@@ -590,10 +700,7 @@ export default function SRE() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p
-                className="text-lg md:text-3xl font-bold text-chart-1 text-wrap"
-                data-testid="text-total-receipts"
-              >
+              <p className="text-lg md:text-3xl font-bold text-chart-1 text-wrap" data-testid="text-total-receipts">
                 {formatCurrency(totalReceipts)}
               </p>
             </CardContent>
@@ -606,10 +713,7 @@ export default function SRE() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p
-                className="text-lg md:text-3xl font-bold text-destructive text-wrap"
-                data-testid="text-total-expenditures"
-              >
+              <p className="text-lg md:text-3xl font-bold text-destructive text-wrap" data-testid="text-total-expenditures">
                 {formatCurrency(totalExpenditures)}
               </p>
             </CardContent>
@@ -651,11 +755,17 @@ export default function SRE() {
           )}
         </div>
 
-        {/* Excel Upload Dialog */}
-        <ExcelUploadDialog
+        {/*
+          Excel Upload Dialog:
+          - type={activeView} passes "collection" or "disbursement" dynamically
+            based on which tab the user is currently on.
+          - This ensures the correct data_type is sent to the /post-bulk endpoint.
+        */}
+        <AboExcelUploadDialog
           type={activeView}
           open={isUploadDialogOpen}
           onOpenChange={setIsUploadDialogOpen}
+          createdBy={user?.id}
         />
 
         {/* ==================== COLLECTION TABLE/CARDS ==================== */}
@@ -677,26 +787,29 @@ export default function SRE() {
               ) : (
                 <>
                   {/* Mobile: Cards */}
-                  <div className="md:hidden space-y-3 px-4 pt-2 pb-4">
+                  <div className="md:hidden space-y-3 px-4 pt-2 pb-2">
                     {filteredCollections.length === 0 ? (
                       <p className="text-center py-8 text-muted-foreground text-sm">
                         No collection transactions recorded for this period
                       </p>
                     ) : (
                       <>
-                        {filteredCollections.map((collection) => (
+                        {paginatedCollections.map((collection) => (
                           <CollectionCard
                             key={collection.id}
                             collection={collection}
                             onDelete={setDeleteCollectionId}
                           />
                         ))}
-                        <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                          <span className="text-sm font-semibold">Total Collections</span>
-                          <span className="font-bold text-chart-1">
-                            {formatCurrency(totalReceipts)}
-                          </span>
-                        </div>
+                        {/* Mobile total — only show on last page */}
+                        {collectionPage === collectionTotalPages && (
+                          <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
+                            <span className="text-sm font-semibold">Total Collections</span>
+                            <span className="font-bold text-chart-1">
+                              {formatCurrency(totalReceipts)}
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -719,13 +832,17 @@ export default function SRE() {
                       <TableBody>
                         {filteredCollections.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                               No collection transactions recorded for this period
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredCollections.map((collection) => (
-                            <TableRow key={collection.id} data-testid={`row-collection-${collection.id}`} className={`${collection.is_flagged === true ? "bg-red-500/20" : ""}`}>
+                          paginatedCollections.map((collection) => (
+                            <TableRow
+                              key={collection.id}
+                              data-testid={`row-collection-${collection.id}`}
+                              className={collection.is_flagged === true ? "bg-red-500/20" : ""}
+                            >
                               <TableCell className="font-medium" data-testid={`text-transaction-id-${collection.id}`}>
                                 {collection.transactionId}
                               </TableCell>
@@ -741,7 +858,17 @@ export default function SRE() {
                               <TableCell data-testid={`text-or-number-${collection.id}`}>
                                 {collection.orNumber}
                               </TableCell>
-                              <TableCell className="text-center">{collection.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
+                              <TableCell className="text-center">
+                                {collection.is_flagged === true ? (
+                                  <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                  </p>
+                                ) : (
+                                  <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                  </p>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right font-semibold text-chart-1" data-testid={`text-amount-${collection.id}`}>
                                 {formatCurrency(parseFloat(collection.amount))}
                               </TableCell>
@@ -769,19 +896,32 @@ export default function SRE() {
                           ))
                         )}
                       </TableBody>
-                      <TableFooter>
-                        <TableRow>
-                          <TableCell colSpan={6} className="font-semibold">
-                            Total Collections
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-chart-1">
-                            {formatCurrency(totalReceipts)}
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableFooter>
+                      {filteredCollections.length > 0 && (
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell colSpan={6} className="font-semibold">
+                              Total Collections
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-chart-1">
+                              {formatCurrency(totalReceipts)}
+                            </TableCell>
+                            <TableCell />
+                          </TableRow>
+                        </TableFooter>
+                      )}
                     </Table>
                   </div>
+
+                  {/* Pagination */}
+                  {filteredCollections.length > 0 && (
+                    <Pagination
+                      currentPage={collectionPage}
+                      totalPages={collectionTotalPages}
+                      totalItems={filteredCollections.length}
+                      rowsPerPage={ROWS_PER_PAGE}
+                      onPageChange={setCollectionPage}
+                    />
+                  )}
                 </>
               )}
             </CardContent>
@@ -807,26 +947,29 @@ export default function SRE() {
               ) : (
                 <>
                   {/* Mobile: Cards */}
-                  <div className="md:hidden space-y-3 px-4 pt-2 pb-4">
+                  <div className="md:hidden space-y-3 px-4 pt-2 pb-2">
                     {filteredDisbursements.length === 0 ? (
                       <p className="text-center py-8 text-muted-foreground text-sm">
                         No disbursement transactions recorded for this period
                       </p>
                     ) : (
                       <>
-                        {filteredDisbursements.map((disbursement) => (
+                        {paginatedDisbursements.map((disbursement) => (
                           <DisbursementCard
                             key={disbursement.id}
                             disbursement={disbursement}
                             onDelete={setDeleteDisbursementId}
                           />
                         ))}
-                        <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                          <span className="text-sm font-semibold">Total Disbursements</span>
-                          <span className="font-bold text-destructive">
-                            {formatCurrency(totalExpenditures)}
-                          </span>
-                        </div>
+                        {/* Mobile total — only show on last page */}
+                        {disbursementPage === disbursementTotalPages && (
+                          <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
+                            <span className="text-sm font-semibold">Total Disbursements</span>
+                            <span className="font-bold text-destructive">
+                              {formatCurrency(totalExpenditures)}
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -849,13 +992,17 @@ export default function SRE() {
                       <TableBody>
                         {filteredDisbursements.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                               No disbursement transactions recorded for this period
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredDisbursements.map((disbursement) => (
-                            <TableRow key={disbursement.id} data-testid={`row-disbursement-${disbursement.id}`} className={`${disbursement.is_flagged === true ? "bg-red-500/20" : ""}`}>
+                          paginatedDisbursements.map((disbursement) => (
+                            <TableRow
+                              key={disbursement.id}
+                              data-testid={`row-disbursement-${disbursement.id}`}
+                              className={disbursement.is_flagged === true ? "bg-red-500/20" : ""}
+                            >
                               <TableCell className="font-medium" data-testid={`text-transaction-id-${disbursement.id}`}>
                                 {disbursement.transactionId}
                               </TableCell>
@@ -871,7 +1018,17 @@ export default function SRE() {
                               <TableCell data-testid={`text-dv-number-${disbursement.id}`}>
                                 {disbursement.dvNumber}
                               </TableCell>
-                              <TableCell className="text-center">{disbursement.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
+                              <TableCell className="text-center">
+                                {disbursement.is_flagged === true ? (
+                                  <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                  </p>
+                                ) : (
+                                  <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                  </p>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right font-semibold text-destructive" data-testid={`text-amount-${disbursement.id}`}>
                                 {formatCurrency(parseFloat(disbursement.amount))}
                               </TableCell>
@@ -899,19 +1056,32 @@ export default function SRE() {
                           ))
                         )}
                       </TableBody>
-                      <TableFooter>
-                        <TableRow>
-                          <TableCell colSpan={6} className="font-semibold">
-                            Total Disbursements
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-destructive">
-                            {formatCurrency(totalExpenditures)}
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableFooter>
+                      {filteredDisbursements.length > 0 && (
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell colSpan={6} className="font-semibold">
+                              Total Disbursements
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-destructive">
+                              {formatCurrency(totalExpenditures)}
+                            </TableCell>
+                            <TableCell />
+                          </TableRow>
+                        </TableFooter>
+                      )}
                     </Table>
                   </div>
+
+                  {/* Pagination */}
+                  {filteredDisbursements.length > 0 && (
+                    <Pagination
+                      currentPage={disbursementPage}
+                      totalPages={disbursementTotalPages}
+                      totalItems={filteredDisbursements.length}
+                      rowsPerPage={ROWS_PER_PAGE}
+                      onPageChange={setDisbursementPage}
+                    />
+                  )}
                 </>
               )}
             </CardContent>
@@ -932,17 +1102,11 @@ export default function SRE() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel
-                data-testid="button-cancel-delete-collection"
-                className="w-full sm:w-auto"
-              >
+              <AlertDialogCancel data-testid="button-cancel-delete-collection" className="w-full sm:w-auto">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() =>
-                  deleteCollectionId &&
-                  deleteCollection.mutate(deleteCollectionId)
-                }
+                onClick={() => deleteCollectionId && deleteCollection.mutate(deleteCollectionId)}
                 data-testid="button-confirm-delete-collection"
                 className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto"
               >
@@ -966,17 +1130,11 @@ export default function SRE() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel
-                data-testid="button-cancel-delete-disbursement"
-                className="w-full sm:w-auto"
-              >
+              <AlertDialogCancel data-testid="button-cancel-delete-disbursement" className="w-full sm:w-auto">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() =>
-                  deleteDisbursementId &&
-                  deleteDisbursement.mutate(deleteDisbursementId)
-                }
+                onClick={() => deleteDisbursementId && deleteDisbursement.mutate(deleteDisbursementId)}
                 data-testid="button-confirm-delete-disbursement"
                 className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto"
               >

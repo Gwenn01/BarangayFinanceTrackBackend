@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -39,6 +39,7 @@ import {
   BudgetEntry,
   InsertBudgetEntry,
 } from "../../components/budget-entry-form";
+import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
@@ -150,10 +151,6 @@ const formatCurrency = (value: string) => {
   })}`;
 };
 
-/**
- * Safely formats a date string. Returns a fallback string if the date is
- * null, undefined, empty, or not a valid date.
- */
 function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): string {
   if (!dateStr) return fallback;
   let date = parseISO(dateStr);
@@ -162,7 +159,7 @@ function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): s
   return format(date, "MMM dd, yyyy");
 }
 
-/* -------------------- PAGINATION COMPONENT -------------------- */
+/* -------------------- PAGINATION -------------------- */
 
 function Pagination({
   currentPage,
@@ -182,7 +179,6 @@ function Pagination({
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-  // Build page number array with ellipsis
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
     if (totalPages <= 7) {
@@ -206,7 +202,6 @@ function Pagination({
         <span className="font-medium">{endItem}</span> of{" "}
         <span className="font-medium">{totalItems}</span> entries
       </p>
-
       <div className="flex items-center gap-1 order-1 sm:order-2">
         <Button
           variant="outline"
@@ -218,7 +213,6 @@ function Pagination({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-
         {getPageNumbers().map((page, idx) =>
           page === "..." ? (
             <span
@@ -241,7 +235,6 @@ function Pagination({
             </Button>
           )
         )}
-
         <Button
           variant="outline"
           size="sm"
@@ -273,7 +266,6 @@ function EntryCard({
       className="border rounded-lg p-4 space-y-3 bg-card"
       data-testid={`row-entry-${entry.id}`}
     >
-      {/* Top row: transaction ID + amount */}
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-xs text-muted-foreground truncate">
           {entry.transactionId}
@@ -282,31 +274,19 @@ function EntryCard({
           {formatCurrency(entry.amount)}
         </span>
       </div>
-
-      {/* Category / subcategory */}
       <div>
         <p className="font-medium text-sm leading-snug">{entry.category}</p>
         {entry.subcategory && (
-          <p className="text-xs text-muted-foreground truncate">
-            {entry.subcategory}
-          </p>
+          <p className="text-xs text-muted-foreground truncate">{entry.subcategory}</p>
         )}
       </div>
-
-      {/* Payee + date row */}
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
         <span className="truncate">{entry.payee}</span>
-        <span className="flex-shrink-0">
-          {safeFormatDate(entry.transactionDate)}
-        </span>
+        <span className="flex-shrink-0">{safeFormatDate(entry.transactionDate)}</span>
       </div>
-
-      {/* DV Number */}
       {entry.dvNumber && (
         <p className="text-xs text-muted-foreground">DV: {entry.dvNumber}</p>
       )}
-
-      {/* Actions */}
       <div className="flex gap-2 pt-1">
         <Button
           size="sm"
@@ -338,6 +318,7 @@ function EntryCard({
 export default function ABO() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedEntry, setSelectedEntry] = useState<BudgetEntry | undefined>(undefined);
   const [entryToDelete, setEntryToDelete] = useState<BudgetEntry | undefined>(undefined);
@@ -365,12 +346,10 @@ export default function ABO() {
     refetchOnWindowFocus: true,
   });
 
-  // Reset to page 1 whenever entries change (e.g. after add/delete)
   useEffect(() => {
     setCurrentPage(1);
   }, [entries.length]);
 
-  // Pagination calculations
   const totalPages = Math.ceil(entries.length / ROWS_PER_PAGE);
   const paginatedEntries = entries.slice(
     (currentPage - 1) * ROWS_PER_PAGE,
@@ -481,16 +460,31 @@ export default function ABO() {
               Manage annual budget allocations and appropriations
             </p>
           </div>
-          <Button
-            className="gap-2 flex-shrink-0"
-            size="sm"
-            onClick={handleCreate}
-            data-testid="button-add-entry"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Budget Entry</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+
+          {/* Header action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setUploadDialogOpen(true)}
+              data-testid="button-upload-excel"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-green-600" />
+              <span className="hidden sm:inline">Upload Excel</span>
+              <span className="sm:hidden">Upload</span>
+            </Button>
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={handleCreate}
+              data-testid="button-add-entry"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Budget Entry</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
 
         {/* Summary Card */}
@@ -585,9 +579,7 @@ export default function ABO() {
                           <TableCell className="font-medium">
                             {entry.transactionId}
                           </TableCell>
-                          <TableCell>
-                            {safeFormatDate(entry.transactionDate)}
-                          </TableCell>
+                          <TableCell>{safeFormatDate(entry.transactionDate)}</TableCell>
                           <TableCell className="max-w-xs">
                             <div className="font-medium">{entry.category}</div>
                             <div className="text-sm text-muted-foreground truncate">
@@ -651,6 +643,13 @@ export default function ABO() {
             )}
           </CardContent>
         </Card>
+
+        {/* Excel Upload Dialog */}
+        <AboExcelUploadDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          createdBy={currentUserId}
+        />
 
         {/* Add/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, FolderKanban, Flag, Check } from "lucide-react";
+import { Plus, Edit, Trash2, FolderKanban, Flag, Check, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import { EncoderLayout } from "../../components/encoder-layout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -60,6 +60,7 @@ import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 import { api, apiCall } from "../../utils/api";
+import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 
 /* -------------------- TYPES -------------------- */
 
@@ -143,6 +144,95 @@ const formatCurrency = (value: number | string) => {
   return `₱${num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+/* -------------------- PAGINATION -------------------- */
+
+function Pagination({
+  currentPage,
+  totalPages,
+  totalItems,
+  rowsPerPage,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const startItem = (currentPage - 1) * rowsPerPage + 1;
+  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+
+  // Build page number array with ellipsis
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-3 border-t">
+      <p className="text-xs text-muted-foreground order-2 sm:order-1">
+        Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
+        <span className="font-medium">{totalItems}</span> projects
+      </p>
+      <div className="flex items-center gap-1 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          data-testid="button-prev-page"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        {getPageNumbers().map((page, idx) =>
+          page === "..." ? (
+            <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm">
+              …
+            </span>
+          ) : (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8 text-xs"
+              onClick={() => onPageChange(page as number)}
+              data-testid={`button-page-${page}`}
+            >
+              {page}
+            </Button>
+          )
+        )}
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          data-testid="button-next-page"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------- MOBILE PROJECT CARD -------------------- */
 
 function ProjectCard({
@@ -159,7 +249,6 @@ function ProjectCard({
       className="border rounded-lg p-4 space-y-3 bg-card"
       data-testid={`row-dfur-${project.id}`}
     >
-      {/* Top: transaction ID + status badge */}
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-xs text-muted-foreground truncate">
           {project.transaction_id}
@@ -169,16 +258,13 @@ function ProjectCard({
         </Badge>
       </div>
 
-      {/* Project name */}
       <p className="font-semibold text-sm leading-snug">{project.project}</p>
 
-      {/* Nature + Location */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{project.name_of_collection}</span>
         <span>{project.location}</span>
       </div>
 
-      {/* Cost row */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-muted/40 rounded p-2">
           <p className="text-muted-foreground mb-0.5">Approved Cost</p>
@@ -190,14 +276,12 @@ function ProjectCard({
         </div>
       </div>
 
-      {/* Extensions */}
       {project.no_extensions > 0 && (
         <p className="text-xs text-muted-foreground">
           Extensions: {project.no_extensions}
         </p>
       )}
 
-      {/* Actions */}
       <div className="flex gap-2 pt-1">
         <Button
           variant="outline"
@@ -230,6 +314,9 @@ export default function DFUR() {
   const [open, setOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<DfurProject | null>(null);
   const [deleteProject, setDeleteProject] = useState<DfurProject | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 10;
   const { toast } = useToast();
 
   /* Fetch projects */
@@ -242,7 +329,19 @@ export default function DFUR() {
     },
   });
 
-  const projects = projectsResponse?.data || [];
+  const projects: DfurProject[] = projectsResponse?.data || [];
+
+  // Pagination derived values
+  const totalPages = Math.ceil(projects.length / ROWS_PER_PAGE);
+  const paginatedProjects = projects.slice(
+    (currentPage - 1) * ROWS_PER_PAGE,
+    currentPage * ROWS_PER_PAGE
+  );
+
+  // Reset to page 1 when projects change (e.g. after add/delete)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [projects.length]);
 
   /* Generate transaction ID */
   const { data: transactionIdData } = useQuery({
@@ -440,194 +539,83 @@ export default function DFUR() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 flex-shrink-0" size="sm" data-testid="button-add-dfur">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add DFUR Project</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </DialogTrigger>
+          {/* Header action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setUploadDialogOpen(true)}
+              data-testid="button-upload-excel"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-green-600" />
+              <span className="hidden sm:inline">Upload Excel</span>
+              <span className="sm:hidden">Upload</span>
+            </Button>
 
-            <DialogContent className="w-[calc(100%-2rem)] max-w-[700px] mx-auto rounded-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-poppins">
-                  {editingProject ? "Edit DFUR Project" : "Add DFUR Project"}
-                </DialogTitle>
-              </DialogHeader>
+            <Dialog open={open} onOpenChange={handleDialogClose}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" size="sm" data-testid="button-add-dfur">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add DFUR Project</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </DialogTrigger>
 
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <DialogContent className="w-[calc(100%-2rem)] max-w-[700px] mx-auto rounded-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="font-poppins">
+                    {editingProject ? "Edit DFUR Project" : "Add DFUR Project"}
+                  </DialogTitle>
+                </DialogHeader>
 
-                  {/* Transaction ID + Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+
+                    {/* Transaction ID + Date */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="transaction_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transaction ID</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly className="bg-muted" data-testid="input-transaction-id" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="transaction_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transaction Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} data-testid="input-transaction-date" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <FormField
                       control={form.control}
-                      name="transaction_id"
+                      name="name_of_collection"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Transaction ID</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly className="bg-muted" data-testid="input-transaction-id" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="transaction_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Transaction Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-transaction-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="name_of_collection"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nature of Collection - ECONOMIC SERVICES</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-nature-of-collection">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {natureOfCollectionOptions.map((option) => (
-                              <SelectItem key={option} value={option}>{option}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="project"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Project name" {...field} data-testid="input-project" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Project location" {...field} data-testid="input-location" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Costs */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="total_cost_approved"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Total Cost Approved (₱)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number" step="0.01" placeholder="0.00"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              value={field.value}
-                              data-testid="input-total-cost-approved"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="total_cost_incurred"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Total Cost Incurred (₱)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number" step="0.01" placeholder="0.00"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              value={field.value}
-                              data-testid="input-total-cost-incurred"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Dates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="date_started"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date Started</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-date-started" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="target_completion_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Target Completion Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-target-completion" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Status + Extensions */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status</FormLabel>
+                          <FormLabel>Nature of Collection - ECONOMIC SERVICES</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-status">
-                                <SelectValue placeholder="Select status" />
+                              <SelectTrigger data-testid="select-nature-of-collection">
+                                <SelectValue placeholder="Select category" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {statusOptions.map((option) => (
+                              {natureOfCollectionOptions.map((option) => (
                                 <SelectItem key={option} value={option}>{option}</SelectItem>
                               ))}
                             </SelectContent>
@@ -636,74 +624,200 @@ export default function DFUR() {
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={form.control}
-                      name="no_extensions"
+                      name="project"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>No. of Extensions</FormLabel>
+                          <FormLabel>Project</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number" min="0" step="1" placeholder="0"
+                            <Input placeholder="Project name" {...field} data-testid="input-project" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Project location" {...field} data-testid="input-location" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Costs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="total_cost_approved"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total Cost Approved (₱)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number" step="0.01" placeholder="0.00"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                value={field.value}
+                                data-testid="input-total-cost-approved"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="total_cost_incurred"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total Cost Incurred (₱)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number" step="0.01" placeholder="0.00"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                value={field.value}
+                                data-testid="input-total-cost-incurred"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="date_started"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date Started</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} data-testid="input-date-started" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="target_completion_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Target Completion Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} data-testid="input-target-completion" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Status + Extensions */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-status">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {statusOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="no_extensions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>No. of Extensions</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number" min="0" step="1" placeholder="0"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                value={field.value}
+                                data-testid="input-extensions"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="remarks"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Remarks</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Additional notes or remarks"
+                              className="resize-none"
+                              rows={3}
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              value={field.value}
-                              data-testid="input-extensions"
+                              data-testid="input-remarks"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="remarks"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Remarks</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Additional notes or remarks"
-                            className="resize-none"
-                            rows={3}
-                            {...field}
-                            data-testid="input-remarks"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleDialogClose(false)}
-                      className="w-full sm:w-auto"
-                      data-testid="button-cancel"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createProject.isPending || updateProject.isPending}
-                      className="w-full sm:w-auto"
-                      data-testid="button-submit"
-                    >
-                      {createProject.isPending || updateProject.isPending
-                        ? "Saving..."
-                        : editingProject
-                          ? "Update Project"
-                          : "Add Project"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleDialogClose(false)}
+                        className="w-full sm:w-auto"
+                        data-testid="button-cancel"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createProject.isPending || updateProject.isPending}
+                        className="w-full sm:w-auto"
+                        data-testid="button-submit"
+                      >
+                        {createProject.isPending || updateProject.isPending
+                          ? "Saving..."
+                          : editingProject
+                            ? "Update Project"
+                            : "Add Project"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -764,13 +878,13 @@ export default function DFUR() {
             ) : (
               <>
                 {/* Mobile: Card List */}
-                <div className="md:hidden space-y-3 px-4 pt-2 pb-4">
+                <div className="md:hidden space-y-3 px-4 pt-2 pb-2">
                   {!projects || projects.length === 0 ? (
                     <p className="text-center py-8 text-muted-foreground text-sm">
                       No DFUR projects found
                     </p>
                   ) : (
-                    projects.map((project: DfurProject) => (
+                    paginatedProjects.map((project: DfurProject) => (
                       <ProjectCard
                         key={project.id}
                         project={project}
@@ -801,13 +915,17 @@ export default function DFUR() {
                     <TableBody>
                       {!projects || projects.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             No DFUR projects found
                           </TableCell>
                         </TableRow>
                       ) : (
-                        projects.map((project: DfurProject) => (
-                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`} className={`${project.is_flagged === true ? "bg-red-500/20 border-red-500/50" : ""}`}>
+                        paginatedProjects.map((project: DfurProject) => (
+                          <TableRow
+                            key={project.id}
+                            data-testid={`row-dfur-${project.id}`}
+                            className={project.is_flagged === true ? "bg-red-500/20 border-red-500/50" : ""}
+                          >
                             <TableCell className="font-mono text-sm">
                               {project.transaction_id}
                             </TableCell>
@@ -828,8 +946,17 @@ export default function DFUR() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">{project.no_extensions}</TableCell>
-                              <TableCell className="text-center">{project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
-
+                            <TableCell className="text-center">
+                              {project.is_flagged === true ? (
+                                <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                  <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                </p>
+                              ) : (
+                                <p className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                  <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                </p>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <div className="flex gap-2 justify-center">
                                 <Button
@@ -856,10 +983,32 @@ export default function DFUR() {
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Pagination */}
+                {projects.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={projects.length}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
               </>
             )}
           </CardContent>
         </Card>
+
+        {/*
+          Excel Upload Dialog:
+          - type="dfur" hardcoded — always sends data_type="dfur" to /post-bulk
+          - Invalidates "dfur-projects" and "dfur-totals" query keys on success
+        */}
+        <AboExcelUploadDialog
+          type="dfur"
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+        />
 
         {/* Delete Dialog */}
         <AlertDialog open={!!deleteProject} onOpenChange={(open) => !open && setDeleteProject(null)}>
