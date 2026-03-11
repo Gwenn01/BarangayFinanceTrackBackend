@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, FolderKanban } from "lucide-react";
+import { Plus, Edit, Trash2, FolderKanban, Flag, Check } from "lucide-react";
 import { EncoderLayout } from "../../components/encoder-layout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -78,6 +78,7 @@ export type DfurProject = {
   no_extensions: number;
   remarks?: string;
   is_active: number;
+  is_flagged: boolean;
 };
 
 export type InsertDfurProject = {
@@ -793,6 +794,7 @@ export default function DFUR() {
                         <TableHead className="text-right">Incurred Cost</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-center">Extensions</TableHead>
+                        <TableHead className="text-center">Is Flagged</TableHead>
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -805,7 +807,7 @@ export default function DFUR() {
                         </TableRow>
                       ) : (
                         projects.map((project: DfurProject) => (
-                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`}>
+                          <TableRow key={project.id} data-testid={`row-dfur-${project.id}`} className={`${project.is_flagged === true ? "bg-red-500/20 border-red-500/50" : ""}`}>
                             <TableCell className="font-mono text-sm">
                               {project.transaction_id}
                             </TableCell>
@@ -826,6 +828,8 @@ export default function DFUR() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">{project.no_extensions}</TableCell>
+                              <TableCell className="text-center">{project.is_flagged === true ? <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Flag className="h-4 w-4 text-red-500" /> Flagged</p> : <p className="flex items-center justify-center gap-2 text-xs font-semibold"><Check className="h-4 w-4 text-green-500" /> Not Flagged</p>}</TableCell>
+
                             <TableCell>
                               <div className="flex gap-2 justify-center">
                                 <Button

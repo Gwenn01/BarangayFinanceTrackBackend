@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 
 import { useLocation } from "wouter";
+
 
 // Import API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || "https://barangayfinancetrackbackenddeployment.onrender.com/api";
@@ -313,6 +314,8 @@ export default function ViewerDashboard() {
   const [commentEmail, setCommentEmail] = useState("");
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
 
   // ── Queries ──────────────────────────────────
 
@@ -497,6 +500,25 @@ export default function ViewerDashboard() {
     } catch { alert("Failed to submit comment. Please try again."); }
     finally { setIsSubmitting(false); }
   };
+
+useEffect(() => {
+  const container = scrollRef.current;
+  if (!container) return;
+
+  let scrollAmount = 0;
+
+  const interval = setInterval(() => {
+    if (!container) return;
+
+    container.scrollTop += 1;
+
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
+      container.scrollTop = 0; // restart from top
+    }
+  }, 30); // smaller = slower smoother scroll
+
+  return () => clearInterval(interval);
+}, [comments]);
 
   // ─────────────────────────────────────────────
   // RENDER
@@ -1412,7 +1434,7 @@ export default function ViewerDashboard() {
                   </div>
                 </div>
               ) : comments && comments.length > 0 ? (
-                <div className="space-y-2.5 sm:space-y-4 text-wrap custom-scrollbar pr-0.5 sm:pr-2">
+                <div ref={scrollRef} className="space-y-2.5 sm:space-y-4 text-wrap custom-scrollbar overflow-y-scroll pr-0.5 sm:pr-2 max-h-[450px]">
                   {comments.map((comment) => (
                     <div key={comment.id} className="p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-white rounded-xl sm:rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 w-full h-auto text-wrap">
                       <div className="flex items-start gap-2.5 sm:gap-3 mb-2 sm:mb-3">
