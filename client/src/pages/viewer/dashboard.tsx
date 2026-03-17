@@ -314,7 +314,6 @@ export default function ViewerDashboard() {
   const [commentEmail, setCommentEmail] = useState("");
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
 
 
   // ── Queries ──────────────────────────────────
@@ -500,25 +499,6 @@ export default function ViewerDashboard() {
     } catch { alert("Failed to submit comment. Please try again."); }
     finally { setIsSubmitting(false); }
   };
-
-useEffect(() => {
-  const container = scrollRef.current;
-  if (!container) return;
-
-  let scrollAmount = 0;
-
-  const interval = setInterval(() => {
-    if (!container) return;
-
-    container.scrollTop += 1;
-
-    if (container.scrollTop + container.clientHeight >= container.scrollHeight) {
-      container.scrollTop = 0; // restart from top
-    }
-  }, 30); // smaller = slower smoother scroll
-
-  return () => clearInterval(interval);
-}, [comments]);
 
   // ─────────────────────────────────────────────
   // RENDER
@@ -856,8 +836,8 @@ useEffect(() => {
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
-            {/* INCOME */}
+          {/* <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
+
             <div className="bg-emerald-200/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden shadow-lg">
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-emerald-400/20 rounded-full blur-2xl sm:blur-3xl" />
               <div className="relative">
@@ -874,7 +854,6 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* EXPENSE */}
             <div className="bg-amber-200/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden shadow-lg">
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-amber-400/20 rounded-full blur-2xl sm:blur-3xl" />
               <div className="relative">
@@ -891,7 +870,7 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* SURPLUS / DEFICIT */}
+
             <div className={`stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border ${surplus >= 0 ? 'border-emerald-200' : 'border-red-200'}`}>
               <div className={`absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 rounded-full blur-2xl sm:blur-3xl ${surplus >= 0 ? 'bg-emerald-400/20' : 'bg-red-400/20'}`} />
               <div className="relative">
@@ -911,7 +890,7 @@ useEffect(() => {
                 <div className="text-xs sm:text-sm text-slate-600 font-semibold uppercase tracking-wider">Net Position</div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Revenue & Expenditure Pie Charts */}
           <div className="grid md:grid-cols-2 gap-6">
@@ -1110,7 +1089,7 @@ useEffect(() => {
 
           {/* Project Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
-            <div className="stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-blue-200">
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-blue-200">
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-blue-400/20 rounded-full blur-2xl sm:blur-3xl" />
               <div className="relative">
                 <div className="flex items-center justify-between mb-3 sm:mb-5 lg:mb-6">
@@ -1126,7 +1105,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-emerald-200">
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-emerald-200">
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-emerald-400/20 rounded-full blur-2xl sm:blur-3xl" />
               <div className="relative">
                 <div className="flex items-center justify-between mb-3 sm:mb-5 lg:mb-6">
@@ -1142,7 +1121,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="stat-card glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-amber-200">
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 relative overflow-hidden border border-amber-200">
               <div className="absolute top-0 right-0 w-20 h-20 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-amber-400/20 rounded-full blur-2xl sm:blur-3xl" />
               <div className="relative">
                 <div className="flex items-center justify-between mb-3 sm:mb-5 lg:mb-6">
@@ -1434,7 +1413,7 @@ useEffect(() => {
                   </div>
                 </div>
               ) : comments && comments.length > 0 ? (
-                <div ref={scrollRef} className="space-y-2.5 sm:space-y-4 text-wrap custom-scrollbar overflow-y-scroll pr-0.5 sm:pr-2 max-h-[450px]">
+                <div className="space-y-2.5 sm:space-y-4 text-wrap custom-scrollbar overflow-y-scroll pr-0.5 sm:pr-2 max-h-[450px]">
                   {comments.map((comment) => (
                     <div key={comment.id} className="p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-white rounded-xl sm:rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 w-full h-auto text-wrap">
                       <div className="flex items-start gap-2.5 sm:gap-3 mb-2 sm:mb-3">
