@@ -110,7 +110,6 @@ function frontendToBackend(
   return backendData;
 }
 
-
 export function DisbursementForm({
   disbursement,
   trigger,
@@ -127,6 +126,7 @@ export function DisbursementForm({
   const natureOptions = getAllDisbursementNatureOptions();
 
   const form = useForm<InsertDisbursement>({
+    mode: "onSubmit",
     defaultValues: disbursement
       ? {
           transactionId: disbursement.transactionId,
@@ -157,13 +157,11 @@ export function DisbursementForm({
   });
 
   const toDateInputValue = (dateString?: string) => {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-
-  return date.toISOString().split("T")[0]; // yyyy-MM-dd
-};
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0]; // yyyy-MM-dd
+  };
 
   // Reset form when dialog closes or disbursement prop changes
   useEffect(() => {
@@ -201,48 +199,47 @@ export function DisbursementForm({
   }, [open, disbursement, form, isEditMode]);
 
   // Fetch new transaction ID when dialog opens (only for create mode)
-useEffect(() => {
-  if (open && !isEditMode) {
-    setIdGenerationError(false);
+  useEffect(() => {
+    if (open && !isEditMode) {
+      setIdGenerationError(false);
 
-    apiCall<{
-      transaction_id?: string;
-      transactionId?: string;
-      div_number?: string | number;
-    }>(api.disbursements.generateId)
-      .then((result) => {
-        if (result.error) {
-          throw new Error(result.error);
-        }
+      apiCall<{
+        transaction_id?: string;
+        transactionId?: string;
+        div_number?: string | number;
+      }>(api.disbursements.generateId)
+        .then((result) => {
+          if (result.error) {
+            throw new Error(result.error);
+          }
 
-        const data = result.data as any;
+          const data = result.data as any;
 
-        const transactionId =
-          data?.transaction_id ?? data?.transactionId;
+          const transactionId =
+            data?.transaction_id ?? data?.transactionId;
 
-        const dvNumber = data?.div_number;
+          const dvNumber = data?.div_number;
 
-        if (transactionId) {
-          setTransactionId(transactionId);
-          form.setValue("transactionId", transactionId);
-        }
+          if (transactionId) {
+            setTransactionId(transactionId);
+            form.setValue("transactionId", transactionId);
+          }
 
-        if (dvNumber) {
-          form.setValue("dvNumber", String(dvNumber));
-        }
-      })
-      .catch(() => {
-        setIdGenerationError(true);
-        toast({
-          variant: "destructive",
-          title: "Error Generating Transaction ID",
-          description:
-            "Unable to generate transaction ID. Please close and reopen the form.",
+          if (dvNumber) {
+            form.setValue("dvNumber", String(dvNumber));
+          }
+        })
+        .catch(() => {
+          setIdGenerationError(true);
+          toast({
+            variant: "destructive",
+            title: "Error Generating Transaction ID",
+            description:
+              "Unable to generate transaction ID. Please close and reopen the form.",
+          });
         });
-      });
-  }
-}, [open, isEditMode, form, toast]);
-
+    }
+  }, [open, isEditMode, form, toast]);
 
   const saveDisbursement = useMutation({
     mutationFn: async (data: InsertDisbursement) => {
@@ -335,6 +332,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="transactionId"
+              rules={{ required: "Transaction ID is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Transaction ID</FormLabel>
@@ -356,6 +354,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="transactionDate"
+              rules={{ required: "Transaction date is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Transaction Date</FormLabel>
@@ -375,6 +374,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="natureOfDisbursement"
+              rules={{ required: "Nature of disbursement is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nature of Disbursement</FormLabel>
@@ -630,6 +630,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="fundSource"
+              rules={{ required: "Fund source is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fund Source</FormLabel>
@@ -656,6 +657,11 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="amount"
+              rules={{
+                required: "Amount is required",
+                validate: (value) =>
+                  parseFloat(value) > 0 || "Amount must be greater than 0",
+              }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount (₱)</FormLabel>
@@ -677,6 +683,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="payee"
+              rules={{ required: "Payee is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payee</FormLabel>
@@ -696,6 +703,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="dvNumber"
+              rules={{ required: "DV Number is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>DV Number</FormLabel>
@@ -707,7 +715,6 @@ useEffect(() => {
                       className={!isEditMode ? "bg-muted" : ""}
                       data-testid="input-dv-number"
                     />
-
                   </FormControl>
                   <FormMessage />
                 </FormItem>

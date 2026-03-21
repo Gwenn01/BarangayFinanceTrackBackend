@@ -6,7 +6,7 @@ import {
 } from "../utils/converters";
 import { API_BASE_URL } from "@/utils/api";
 
-import type { Collection, Disbursement, BudgetEntry, DfurProject, Comment } from "../types";
+import type { Collection, Disbursement, BudgetEntry, DfurProject, Comment, DfurApiResponse } from "../types";
 
 /* -------------------- TYPES -------------------- */
 

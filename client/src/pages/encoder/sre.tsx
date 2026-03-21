@@ -12,6 +12,10 @@ import {
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  MessageSquare,
+  User,
+  Clock,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { EncoderLayout } from "../../components/encoder-layout";
@@ -37,6 +41,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../../components/ui/dialog";
 
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { CollectionForm } from "../../components/collection-form";
@@ -80,6 +91,14 @@ type BackendDisbursement = {
   or_number: string;
   remarks?: string;
   is_flagged?: boolean;
+};
+
+type FlagComment = {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  flagged_by: number;
+  username: string;
 };
 
 /* -------------------- FRONTEND TYPES -------------------- */
@@ -166,6 +185,103 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+/* -------------------- FLAG COMMENTS DIALOG -------------------- */
+
+function FlagCommentsDialog({
+  open,
+  onOpenChange,
+  recordId,
+  flagType,
+  transactionId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  recordId: string | null;
+  flagType: "collection" | "disbursement";
+  transactionId?: string;
+}) {
+  const API_BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "https://barangayfinancetrackbackenddeployment.onrender.com/api";
+
+  const { data: comments = [], isLoading } = useQuery<FlagComment[]>({
+    queryKey: ["flag-comments", flagType, recordId],
+    queryFn: async () => {
+      if (!recordId) return [];
+      const url = `${API_BASE_URL}/get-flag-comments?flag_type=${flagType}&record_id=${recordId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch flag comments");
+      const data = await response.json();
+      return data.data || [];
+    },
+    enabled: open && !!recordId,
+    staleTime: 0,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-lg mx-auto rounded-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="h-5 w-5 text-red-500" />
+            Flag Comments
+          </DialogTitle>
+          <DialogDescription>
+            Viewing flag remarks for transaction{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {transactionId}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-2 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 bg-muted rounded-lg animate-pulse"
+                />
+              ))}
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+              <MessageSquare className="h-8 w-8 opacity-40" />
+              <p className="text-sm">No flag comments found for this record.</p>
+            </div>
+          ) : (
+            comments.map((comment) => (
+              <div
+                key={comment.id}
+                className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 space-y-2"
+              >
+                <p className="text-sm leading-relaxed text-foreground">
+                  {comment.comment_text}
+                </p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
+                  <span className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    <span className="font-medium">{comment.username}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    {comment.created_at
+                      ? format(
+                          new Date(comment.created_at),
+                          "MMM dd, yyyy hh:mm a"
+                        )
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* -------------------- PAGINATION -------------------- */
 
 function Pagination({
@@ -193,7 +309,11 @@ function Pagination({
     } else {
       pages.push(1);
       if (currentPage > 3) pages.push("...");
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      for (
+        let i = Math.max(2, currentPage - 1);
+        i <= Math.min(totalPages - 1, currentPage + 1);
+        i++
+      ) {
         pages.push(i);
       }
       if (currentPage < totalPages - 2) pages.push("...");
@@ -222,7 +342,10 @@ function Pagination({
 
         {getPageNumbers().map((page, idx) =>
           page === "..." ? (
-            <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm">
+            <span
+              key={`ellipsis-${idx}`}
+              className="px-1 text-muted-foreground text-sm"
+            >
               …
             </span>
           ) : (
@@ -259,9 +382,11 @@ function Pagination({
 function CollectionCard({
   collection,
   onDelete,
+  onViewFlags,
 }: {
   collection: Collection;
   onDelete: (id: string) => void;
+  onViewFlags: (id: string, transactionId: string) => void;
 }) {
   return (
     <div
@@ -291,21 +416,40 @@ function CollectionCard({
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-        <span className="truncate" data-testid={`text-payor-${collection.id}`}>
+        <span
+          className="truncate"
+          data-testid={`text-payor-${collection.id}`}
+        >
           {collection.payor}
         </span>
-        <span className="flex-shrink-0" data-testid={`text-date-${collection.id}`}>
+        <span
+          className="flex-shrink-0"
+          data-testid={`text-date-${collection.id}`}
+        >
           {format(new Date(collection.transactionDate), "MMM dd, yyyy")}
         </span>
       </div>
 
       {collection.orNumber && (
-        <p className="text-xs text-muted-foreground" data-testid={`text-or-number-${collection.id}`}>
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid={`text-or-number-${collection.id}`}
+        >
           OR: {collection.orNumber}
         </p>
       )}
 
       <div className="flex gap-2 pt-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-1"
+          onClick={() => onViewFlags(collection.id, collection.transactionId)}
+          data-testid={`button-view-flags-collection-${collection.id}`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </Button>
         <CollectionForm
           collection={collection}
           trigger={
@@ -340,9 +484,11 @@ function CollectionCard({
 function DisbursementCard({
   disbursement,
   onDelete,
+  onViewFlags,
 }: {
   disbursement: Disbursement;
   onDelete: (id: string) => void;
+  onViewFlags: (id: string, transactionId: string) => void;
 }) {
   return (
     <div
@@ -372,21 +518,42 @@ function DisbursementCard({
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-        <span className="truncate" data-testid={`text-payee-${disbursement.id}`}>
+        <span
+          className="truncate"
+          data-testid={`text-payee-${disbursement.id}`}
+        >
           {disbursement.payee}
         </span>
-        <span className="flex-shrink-0" data-testid={`text-date-${disbursement.id}`}>
+        <span
+          className="flex-shrink-0"
+          data-testid={`text-date-${disbursement.id}`}
+        >
           {format(new Date(disbursement.transactionDate), "MMM dd, yyyy")}
         </span>
       </div>
 
       {disbursement.dvNumber && (
-        <p className="text-xs text-muted-foreground" data-testid={`text-dv-number-${disbursement.id}`}>
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid={`text-dv-number-${disbursement.id}`}
+        >
           DV: {disbursement.dvNumber}
         </p>
       )}
 
       <div className="flex gap-2 pt-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-1"
+          onClick={() =>
+            onViewFlags(disbursement.id, disbursement.transactionId)
+          }
+          data-testid={`button-view-flags-disbursement-${disbursement.id}`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </Button>
         <DisbursementForm
           disbursement={disbursement}
           trigger={
@@ -430,19 +597,44 @@ export default function SRE() {
     format(endOfMonth(currentDate), "yyyy-MM-dd")
   );
   const [activeView, setActiveView] = useState<ViewType>("collection");
-  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
-  const [deleteDisbursementId, setDeleteDisbursementId] = useState<string | null>(null);
+  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(
+    null
+  );
+  const [deleteDisbursementId, setDeleteDisbursementId] = useState<
+    string | null
+  >(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [collectionPage, setCollectionPage] = useState(1);
   const [disbursementPage, setDisbursementPage] = useState(1);
+
+  // Flag comments dialog state
+  const [flagDialog, setFlagDialog] = useState<{
+    open: boolean;
+    recordId: string | null;
+    flagType: "collection" | "disbursement";
+    transactionId?: string;
+  }>({ open: false, recordId: null, flagType: "collection" });
+
   const { toast } = useToast();
 
+  const openFlagDialog = (
+    recordId: string,
+    flagType: "collection" | "disbursement",
+    transactionId: string
+  ) => {
+    setFlagDialog({ open: true, recordId, flagType, transactionId });
+  };
+
   /* Fetch collections */
-  const { data: collections = [], isLoading: isLoadingCollections } = useQuery<Collection[]>({
+  const { data: collections = [], isLoading: isLoadingCollections } = useQuery<
+    Collection[]
+  >({
     queryKey: ["collections"],
     queryFn: async () => {
-      const result = await apiCall<{ data: BackendCollection[] }>(api.collections.getAll);
+      const result = await apiCall<{ data: BackendCollection[] }>(
+        api.collections.getAll
+      );
       if (result.error) throw new Error(result.error);
       const data = result.data?.data || result.data || [];
       if (Array.isArray(data)) return data.map(backendCollectionToFrontend);
@@ -455,20 +647,24 @@ export default function SRE() {
   });
 
   /* Fetch disbursements */
-  const { data: disbursements = [], isLoading: isLoadingDisbursements } = useQuery<Disbursement[]>({
-    queryKey: ["disbursements"],
-    queryFn: async () => {
-      const result = await apiCall<{ data: BackendDisbursement[] }>(api.disbursements.getAll);
-      if (result.error) throw new Error(result.error);
-      const data = result.data?.data || result.data || [];
-      if (Array.isArray(data)) return data.map(backendDisbursementToFrontend);
-      return [];
-    },
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-  });
+  const { data: disbursements = [], isLoading: isLoadingDisbursements } =
+    useQuery<Disbursement[]>({
+      queryKey: ["disbursements"],
+      queryFn: async () => {
+        const result = await apiCall<{ data: BackendDisbursement[] }>(
+          api.disbursements.getAll
+        );
+        if (result.error) throw new Error(result.error);
+        const data = result.data?.data || result.data || [];
+        if (Array.isArray(data))
+          return data.map(backendDisbursementToFrontend);
+        return [];
+      },
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    });
 
   /* Delete collection */
   const deleteCollection = useMutation({
@@ -511,8 +707,10 @@ export default function SRE() {
       return id;
     },
     onSuccess: (deletedId) => {
-      queryClient.setQueryData(["disbursements"], (old: Disbursement[] = []) =>
-        old.filter((item) => item.id !== deletedId)
+      queryClient.setQueryData(
+        ["disbursements"],
+        (old: Disbursement[] = []) =>
+          old.filter((item) => item.id !== deletedId)
       );
       queryClient.invalidateQueries({ queryKey: ["disbursements"] });
       toast({
@@ -542,13 +740,17 @@ export default function SRE() {
   });
 
   /* Pagination derived values */
-  const collectionTotalPages = Math.ceil(filteredCollections.length / ROWS_PER_PAGE);
+  const collectionTotalPages = Math.ceil(
+    filteredCollections.length / ROWS_PER_PAGE
+  );
   const paginatedCollections = filteredCollections.slice(
     (collectionPage - 1) * ROWS_PER_PAGE,
     collectionPage * ROWS_PER_PAGE
   );
 
-  const disbursementTotalPages = Math.ceil(filteredDisbursements.length / ROWS_PER_PAGE);
+  const disbursementTotalPages = Math.ceil(
+    filteredDisbursements.length / ROWS_PER_PAGE
+  );
   const paginatedDisbursements = filteredDisbursements.slice(
     (disbursementPage - 1) * ROWS_PER_PAGE,
     disbursementPage * ROWS_PER_PAGE
@@ -573,8 +775,14 @@ export default function SRE() {
     setDisbursementPage(1);
   };
 
-  const totalReceipts = filteredCollections.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-  const totalExpenditures = filteredDisbursements.reduce((sum, d) => sum + parseFloat(d.amount), 0);
+  const totalReceipts = filteredCollections.reduce(
+    (sum, c) => sum + parseFloat(c.amount),
+    0
+  );
+  const totalExpenditures = filteredDisbursements.reduce(
+    (sum, d) => sum + parseFloat(d.amount),
+    0
+  );
   const netBalance = totalReceipts - totalExpenditures;
 
   /* Export */
@@ -590,10 +798,17 @@ export default function SRE() {
         totalExpenditures,
         netBalance,
       });
-      toast({ title: "Export Successful", description: "SRE report has been downloaded successfully." });
+      toast({
+        title: "Export Successful",
+        description: "SRE report has been downloaded successfully.",
+      });
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Export Failed", description: "Failed to export SRE report. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "Failed to export SRE report. Please try again.",
+      });
     } finally {
       setIsExporting(false);
     }
@@ -610,7 +825,9 @@ export default function SRE() {
           <div>
             <h1 className="text-xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
               Statement of Receipts &amp; Expenditures
-              <span className="block md:inline md:ml-2 text-lg md:text-3xl">(SRE)</span>
+              <span className="block md:inline md:ml-2 text-lg md:text-3xl">
+                (SRE)
+              </span>
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               View and encode financial statements for the selected period
@@ -627,9 +844,7 @@ export default function SRE() {
             <span className="hidden sm:inline">
               {isExporting ? "Exporting..." : "Export SRE"}
             </span>
-            <span className="sm:hidden">
-              {isExporting ? "..." : "Export"}
-            </span>
+            <span className="sm:hidden">{isExporting ? "..." : "Export"}</span>
           </Button>
         </div>
 
@@ -666,7 +881,9 @@ export default function SRE() {
           <CardContent>
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-2">
               <div>
-                <Label htmlFor="start-date" className="text-sm">Start Date</Label>
+                <Label htmlFor="start-date" className="text-sm">
+                  Start Date
+                </Label>
                 <Input
                   id="start-date"
                   type="date"
@@ -677,7 +894,9 @@ export default function SRE() {
                 />
               </div>
               <div>
-                <Label htmlFor="end-date" className="text-sm">End Date</Label>
+                <Label htmlFor="end-date" className="text-sm">
+                  End Date
+                </Label>
                 <Input
                   id="end-date"
                   type="date"
@@ -700,7 +919,10 @@ export default function SRE() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-lg md:text-3xl font-bold text-chart-1 text-wrap" data-testid="text-total-receipts">
+              <p
+                className="text-lg md:text-3xl font-bold text-chart-1 text-wrap"
+                data-testid="text-total-receipts"
+              >
                 {formatCurrency(totalReceipts)}
               </p>
             </CardContent>
@@ -713,7 +935,10 @@ export default function SRE() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-lg md:text-3xl font-bold text-destructive text-wrap" data-testid="text-total-expenditures">
+              <p
+                className="text-lg md:text-3xl font-bold text-destructive text-wrap"
+                data-testid="text-total-expenditures"
+              >
                 {formatCurrency(totalExpenditures)}
               </p>
             </CardContent>
@@ -755,12 +980,6 @@ export default function SRE() {
           )}
         </div>
 
-        {/*
-          Excel Upload Dialog:
-          - type={activeView} passes "collection" or "disbursement" dynamically
-            based on which tab the user is currently on.
-          - This ensures the correct data_type is sent to the /post-bulk endpoint.
-        */}
         <AboExcelUploadDialog
           type={activeView}
           open={isUploadDialogOpen}
@@ -781,7 +1000,10 @@ export default function SRE() {
                 <div className="space-y-3 px-4 md:px-0 pb-4">
                   <div className="h-10 bg-muted rounded animate-pulse" />
                   {skeletonRows.map((i) => (
-                    <div key={i} className="h-12 bg-muted/60 rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="h-12 bg-muted/60 rounded animate-pulse"
+                    />
                   ))}
                 </div>
               ) : (
@@ -799,12 +1021,16 @@ export default function SRE() {
                             key={collection.id}
                             collection={collection}
                             onDelete={setDeleteCollectionId}
+                            onViewFlags={(id, txId) =>
+                              openFlagDialog(id, "collection", txId)
+                            }
                           />
                         ))}
-                        {/* Mobile total — only show on last page */}
                         {collectionPage === collectionTotalPages && (
                           <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                            <span className="text-sm font-semibold">Total Collections</span>
+                            <span className="text-sm font-semibold">
+                              Total Collections
+                            </span>
                             <span className="font-bold text-chart-1">
                               {formatCurrency(totalReceipts)}
                             </span>
@@ -824,7 +1050,9 @@ export default function SRE() {
                           <TableHead>Nature of Collection</TableHead>
                           <TableHead>Payor</TableHead>
                           <TableHead>OR Number</TableHead>
-                          <TableHead className="text-center">Is Flagged</TableHead>
+                          <TableHead className="text-center">
+                            Is Flagged
+                          </TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
@@ -832,8 +1060,12 @@ export default function SRE() {
                       <TableBody>
                         {filteredCollections.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                              No collection transactions recorded for this period
+                            <TableCell
+                              colSpan={8}
+                              className="text-center py-8 text-muted-foreground"
+                            >
+                              No collection transactions recorded for this
+                              period
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -841,43 +1073,86 @@ export default function SRE() {
                             <TableRow
                               key={collection.id}
                               data-testid={`row-collection-${collection.id}`}
-                              className={collection.is_flagged === true ? "bg-red-500/20" : ""}
+                              className={
+                                collection.is_flagged === true
+                                  ? "bg-red-500/20"
+                                  : ""
+                              }
                             >
-                              <TableCell className="font-medium" data-testid={`text-transaction-id-${collection.id}`}>
+                              <TableCell
+                                className="font-medium"
+                                data-testid={`text-transaction-id-${collection.id}`}
+                              >
                                 {collection.transactionId}
                               </TableCell>
-                              <TableCell data-testid={`text-date-${collection.id}`}>
-                                {format(new Date(collection.transactionDate), "MMM dd, yyyy")}
+                              <TableCell
+                                data-testid={`text-date-${collection.id}`}
+                              >
+                                {format(
+                                  new Date(collection.transactionDate),
+                                  "MMM dd, yyyy"
+                                )}
                               </TableCell>
-                              <TableCell data-testid={`text-nature-${collection.id}`}>
+                              <TableCell
+                                data-testid={`text-nature-${collection.id}`}
+                              >
                                 {collection.natureOfCollection}
                               </TableCell>
-                              <TableCell data-testid={`text-payor-${collection.id}`}>
+                              <TableCell
+                                data-testid={`text-payor-${collection.id}`}
+                              >
                                 {collection.payor}
                               </TableCell>
-                              <TableCell data-testid={`text-or-number-${collection.id}`}>
+                              <TableCell
+                                data-testid={`text-or-number-${collection.id}`}
+                              >
                                 {collection.orNumber}
                               </TableCell>
                               <TableCell className="text-center">
                                 {collection.is_flagged === true ? (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                    <Flag className="h-4 w-4 text-red-500" />{" "}
+                                    Flagged
                                   </p>
                                 ) : (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                    <Check className="h-4 w-4 text-green-500" />{" "}
+                                    Not Flagged
                                   </p>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right font-semibold text-chart-1" data-testid={`text-amount-${collection.id}`}>
+                              <TableCell
+                                className="text-right font-semibold text-chart-1"
+                                data-testid={`text-amount-${collection.id}`}
+                              >
                                 {formatCurrency(parseFloat(collection.amount))}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex justify-center gap-2">
+                                  {/* Eye / View Flag Comments */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      openFlagDialog(
+                                        collection.id,
+                                        "collection",
+                                        collection.transactionId
+                                      )
+                                    }
+                                    data-testid={`button-view-flags-collection-${collection.id}`}
+                                    title="View flag comments"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
                                   <CollectionForm
                                     collection={collection}
                                     trigger={
-                                      <Button variant="ghost" size="icon" data-testid={`button-edit-collection-${collection.id}`}>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        data-testid={`button-edit-collection-${collection.id}`}
+                                      >
                                         <Edit className="h-4 w-4" />
                                       </Button>
                                     }
@@ -885,7 +1160,9 @@ export default function SRE() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => setDeleteCollectionId(collection.id)}
+                                    onClick={() =>
+                                      setDeleteCollectionId(collection.id)
+                                    }
                                     data-testid={`button-delete-collection-${collection.id}`}
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -941,7 +1218,10 @@ export default function SRE() {
                 <div className="space-y-3 px-4 md:px-0 pb-4">
                   <div className="h-10 bg-muted rounded animate-pulse" />
                   {skeletonRows.map((i) => (
-                    <div key={i} className="h-12 bg-muted/60 rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="h-12 bg-muted/60 rounded animate-pulse"
+                    />
                   ))}
                 </div>
               ) : (
@@ -959,12 +1239,16 @@ export default function SRE() {
                             key={disbursement.id}
                             disbursement={disbursement}
                             onDelete={setDeleteDisbursementId}
+                            onViewFlags={(id, txId) =>
+                              openFlagDialog(id, "disbursement", txId)
+                            }
                           />
                         ))}
-                        {/* Mobile total — only show on last page */}
                         {disbursementPage === disbursementTotalPages && (
                           <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                            <span className="text-sm font-semibold">Total Disbursements</span>
+                            <span className="text-sm font-semibold">
+                              Total Disbursements
+                            </span>
                             <span className="font-bold text-destructive">
                               {formatCurrency(totalExpenditures)}
                             </span>
@@ -984,7 +1268,9 @@ export default function SRE() {
                           <TableHead>Nature of Disbursement</TableHead>
                           <TableHead>Payee</TableHead>
                           <TableHead>DV Number</TableHead>
-                          <TableHead className="text-center">Is Flagged</TableHead>
+                          <TableHead className="text-center">
+                            Is Flagged
+                          </TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
@@ -992,8 +1278,12 @@ export default function SRE() {
                       <TableBody>
                         {filteredDisbursements.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                              No disbursement transactions recorded for this period
+                            <TableCell
+                              colSpan={8}
+                              className="text-center py-8 text-muted-foreground"
+                            >
+                              No disbursement transactions recorded for this
+                              period
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -1001,43 +1291,88 @@ export default function SRE() {
                             <TableRow
                               key={disbursement.id}
                               data-testid={`row-disbursement-${disbursement.id}`}
-                              className={disbursement.is_flagged === true ? "bg-red-500/20" : ""}
+                              className={
+                                disbursement.is_flagged === true
+                                  ? "bg-red-500/20"
+                                  : ""
+                              }
                             >
-                              <TableCell className="font-medium" data-testid={`text-transaction-id-${disbursement.id}`}>
+                              <TableCell
+                                className="font-medium"
+                                data-testid={`text-transaction-id-${disbursement.id}`}
+                              >
                                 {disbursement.transactionId}
                               </TableCell>
-                              <TableCell data-testid={`text-date-${disbursement.id}`}>
-                                {format(new Date(disbursement.transactionDate), "MMM dd, yyyy")}
+                              <TableCell
+                                data-testid={`text-date-${disbursement.id}`}
+                              >
+                                {format(
+                                  new Date(disbursement.transactionDate),
+                                  "MMM dd, yyyy"
+                                )}
                               </TableCell>
-                              <TableCell data-testid={`text-nature-${disbursement.id}`}>
+                              <TableCell
+                                data-testid={`text-nature-${disbursement.id}`}
+                              >
                                 {disbursement.natureOfDisbursement}
                               </TableCell>
-                              <TableCell data-testid={`text-payee-${disbursement.id}`}>
+                              <TableCell
+                                data-testid={`text-payee-${disbursement.id}`}
+                              >
                                 {disbursement.payee}
                               </TableCell>
-                              <TableCell data-testid={`text-dv-number-${disbursement.id}`}>
+                              <TableCell
+                                data-testid={`text-dv-number-${disbursement.id}`}
+                              >
                                 {disbursement.dvNumber}
                               </TableCell>
                               <TableCell className="text-center">
                                 {disbursement.is_flagged === true ? (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                    <Flag className="h-4 w-4 text-red-500" />{" "}
+                                    Flagged
                                   </p>
                                 ) : (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                    <Check className="h-4 w-4 text-green-500" />{" "}
+                                    Not Flagged
                                   </p>
                                 )}
                               </TableCell>
-                              <TableCell className="text-right font-semibold text-destructive" data-testid={`text-amount-${disbursement.id}`}>
-                                {formatCurrency(parseFloat(disbursement.amount))}
+                              <TableCell
+                                className="text-right font-semibold text-destructive"
+                                data-testid={`text-amount-${disbursement.id}`}
+                              >
+                                {formatCurrency(
+                                  parseFloat(disbursement.amount)
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex justify-center gap-2">
+                                  {/* Eye / View Flag Comments */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      openFlagDialog(
+                                        disbursement.id,
+                                        "disbursement",
+                                        disbursement.transactionId
+                                      )
+                                    }
+                                    data-testid={`button-view-flags-disbursement-${disbursement.id}`}
+                                    title="View flag comments"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
                                   <DisbursementForm
                                     disbursement={disbursement}
                                     trigger={
-                                      <Button variant="ghost" size="icon" data-testid={`button-edit-disbursement-${disbursement.id}`}>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        data-testid={`button-edit-disbursement-${disbursement.id}`}
+                                      >
                                         <Edit className="h-4 w-4" />
                                       </Button>
                                     }
@@ -1045,7 +1380,9 @@ export default function SRE() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => setDeleteDisbursementId(disbursement.id)}
+                                    onClick={() =>
+                                      setDeleteDisbursementId(disbursement.id)
+                                    }
                                     data-testid={`button-delete-disbursement-${disbursement.id}`}
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1102,11 +1439,17 @@ export default function SRE() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel data-testid="button-cancel-delete-collection" className="w-full sm:w-auto">
+              <AlertDialogCancel
+                data-testid="button-cancel-delete-collection"
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteCollectionId && deleteCollection.mutate(deleteCollectionId)}
+                onClick={() =>
+                  deleteCollectionId &&
+                  deleteCollection.mutate(deleteCollectionId)
+                }
                 data-testid="button-confirm-delete-collection"
                 className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto"
               >
@@ -1123,18 +1466,26 @@ export default function SRE() {
         >
           <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Disbursement Transaction?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Delete Disbursement Transaction?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the
                 disbursement transaction.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel data-testid="button-cancel-delete-disbursement" className="w-full sm:w-auto">
+              <AlertDialogCancel
+                data-testid="button-cancel-delete-disbursement"
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteDisbursementId && deleteDisbursement.mutate(deleteDisbursementId)}
+                onClick={() =>
+                  deleteDisbursementId &&
+                  deleteDisbursement.mutate(deleteDisbursementId)
+                }
                 data-testid="button-confirm-delete-disbursement"
                 className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto"
               >
@@ -1143,6 +1494,17 @@ export default function SRE() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Flag Comments Dialog */}
+        <FlagCommentsDialog
+          open={flagDialog.open}
+          onOpenChange={(open) =>
+            setFlagDialog((prev) => ({ ...prev, open }))
+          }
+          recordId={flagDialog.recordId}
+          flagType={flagDialog.flagType}
+          transactionId={flagDialog.transactionId}
+        />
       </div>
     </EncoderLayout>
   );

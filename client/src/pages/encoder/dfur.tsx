@@ -1,7 +1,21 @@
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, FolderKanban, Flag, Check, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  FolderKanban,
+  Flag,
+  Check,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  MessageSquare,
+  User,
+  Clock,
+} from "lucide-react";
 import { EncoderLayout } from "../../components/encoder-layout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -26,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "../../components/ui/dialog";
 import {
   AlertDialog,
@@ -97,6 +112,14 @@ export type InsertDfurProject = {
   remarks?: string;
 };
 
+type FlagComment = {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  flagged_by: number;
+  username: string;
+};
+
 /* -------------------- SCHEMA & OPTIONS -------------------- */
 
 const insertDfurProjectSchema = z.object({
@@ -144,6 +167,95 @@ const formatCurrency = (value: number | string) => {
   return `₱${num.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+/* -------------------- FLAG COMMENTS DIALOG -------------------- */
+
+function FlagCommentsDialog({
+  open,
+  onOpenChange,
+  recordId,
+  transactionId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  recordId: string | null;
+  transactionId?: string;
+}) {
+  const API_BASE_URL =
+    import.meta.env.VITE_API_URL ||
+    "https://barangayfinancetrackbackenddeployment.onrender.com/api";
+
+  const { data: comments = [], isLoading } = useQuery<FlagComment[]>({
+    queryKey: ["flag-comments", "dfur", recordId],
+    queryFn: async () => {
+      if (!recordId) return [];
+      const url = `${API_BASE_URL}/get-flag-comments?flag_type=dfur&record_id=${recordId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch flag comments");
+      const data = await response.json();
+      return data.data || [];
+    },
+    enabled: open && !!recordId,
+    staleTime: 0,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-lg mx-auto rounded-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Flag className="h-5 w-5 text-red-500" />
+            Flag Comments
+          </DialogTitle>
+          <DialogDescription>
+            Viewing flag remarks for transaction{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {transactionId}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-2 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+              <MessageSquare className="h-8 w-8 opacity-40" />
+              <p className="text-sm">No flag comments found for this record.</p>
+            </div>
+          ) : (
+            comments.map((comment) => (
+              <div
+                key={comment.id}
+                className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 space-y-2"
+              >
+                <p className="text-sm leading-relaxed text-foreground">
+                  {comment.comment_text}
+                </p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
+                  <span className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" />
+                    <span className="font-medium">{comment.username}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    {comment.created_at
+                      ? format(new Date(comment.created_at), "MMM dd, yyyy hh:mm a")
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* -------------------- PAGINATION -------------------- */
 
 function Pagination({
@@ -164,7 +276,6 @@ function Pagination({
   const startItem = (currentPage - 1) * rowsPerPage + 1;
   const endItem = Math.min(currentPage * rowsPerPage, totalItems);
 
-  // Build page number array with ellipsis
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
     if (totalPages <= 7) {
@@ -172,7 +283,11 @@ function Pagination({
     } else {
       pages.push(1);
       if (currentPage > 3) pages.push("...");
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      for (
+        let i = Math.max(2, currentPage - 1);
+        i <= Math.min(totalPages - 1, currentPage + 1);
+        i++
+      ) {
         pages.push(i);
       }
       if (currentPage < totalPages - 2) pages.push("...");
@@ -201,7 +316,10 @@ function Pagination({
 
         {getPageNumbers().map((page, idx) =>
           page === "..." ? (
-            <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm">
+            <span
+              key={`ellipsis-${idx}`}
+              className="px-1 text-muted-foreground text-sm"
+            >
               …
             </span>
           ) : (
@@ -239,10 +357,12 @@ function ProjectCard({
   project,
   onEdit,
   onDelete,
+  onViewFlags,
 }: {
   project: DfurProject;
   onEdit: (p: DfurProject) => void;
   onDelete: (p: DfurProject) => void;
+  onViewFlags: (id: string, transactionId: string) => void;
 }) {
   return (
     <div
@@ -253,7 +373,10 @@ function ProjectCard({
         <span className="font-mono text-xs text-muted-foreground truncate">
           {project.transaction_id}
         </span>
-        <Badge className={`${getStatusColor(project.status)} flex-shrink-0 text-xs`} variant="outline">
+        <Badge
+          className={`${getStatusColor(project.status)} flex-shrink-0 text-xs`}
+          variant="outline"
+        >
           {project.status}
         </Badge>
       </div>
@@ -287,6 +410,16 @@ function ProjectCard({
           variant="outline"
           size="sm"
           className="flex-1 gap-1"
+          onClick={() => onViewFlags(project.id, project.transaction_id)}
+          data-testid={`button-view-flags-${project.id}`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-1"
           onClick={() => onEdit(project)}
           data-testid={`button-edit-${project.id}`}
         >
@@ -316,8 +449,20 @@ export default function DFUR() {
   const [deleteProject, setDeleteProject] = useState<DfurProject | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Flag comments dialog state
+  const [flagDialog, setFlagDialog] = useState<{
+    open: boolean;
+    recordId: string | null;
+    transactionId?: string;
+  }>({ open: false, recordId: null });
+
   const ROWS_PER_PAGE = 10;
   const { toast } = useToast();
+
+  const openFlagDialog = (recordId: string, transactionId: string) => {
+    setFlagDialog({ open: true, recordId, transactionId });
+  };
 
   /* Fetch projects */
   const { data: projectsResponse, isLoading } = useQuery({
@@ -338,7 +483,7 @@ export default function DFUR() {
     currentPage * ROWS_PER_PAGE
   );
 
-  // Reset to page 1 when projects change (e.g. after add/delete)
+  // Reset to page 1 when projects change
   useEffect(() => {
     setCurrentPage(1);
   }, [projects.length]);
@@ -446,7 +591,10 @@ export default function DFUR() {
   /* Mutations */
   const createProject = useMutation({
     mutationFn: async (data: InsertDfurProject) => {
-      const result = await apiCall(api.dfurProject.create, { method: "POST", body: JSON.stringify(data) });
+      const result = await apiCall(api.dfurProject.create, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
       if (result.error) throw new Error(result.error);
       return result.data;
     },
@@ -454,49 +602,76 @@ export default function DFUR() {
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-generate-id"] });
-      toast({ title: "DFUR Project Added", description: "Development fund project has been successfully added." });
+      toast({
+        title: "DFUR Project Added",
+        description: "Development fund project has been successfully added.",
+      });
       setOpen(false);
       setEditingProject(null);
       form.reset();
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Adding Project", description: error.message || "Failed to add DFUR project. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Error Adding Project",
+        description: error.message || "Failed to add DFUR project. Please try again.",
+      });
     },
   });
 
   const updateProject = useMutation({
     mutationFn: async (data: InsertDfurProject & { id: string }) => {
-      const result = await apiCall(api.dfurProject.update, { method: "PUT", body: JSON.stringify({ ...data, is_active: 1 }) });
+      const result = await apiCall(api.dfurProject.update, {
+        method: "PUT",
+        body: JSON.stringify({ ...data, is_active: 1 }),
+      });
       if (result.error) throw new Error(result.error);
       return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
-      toast({ title: "Project Updated", description: "DFUR project has been successfully updated." });
+      toast({
+        title: "Project Updated",
+        description: "DFUR project has been successfully updated.",
+      });
       setOpen(false);
       setEditingProject(null);
       form.reset();
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Updating Project", description: error.message || "Failed to update project. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Error Updating Project",
+        description: error.message || "Failed to update project. Please try again.",
+      });
     },
   });
 
   const deleteProjectMutation = useMutation({
     mutationFn: async (id: string) => {
-      const result = await apiCall(api.dfurProject.delete, { method: "DELETE", body: JSON.stringify({ id }) });
+      const result = await apiCall(api.dfurProject.delete, {
+        method: "DELETE",
+        body: JSON.stringify({ id }),
+      });
       if (result.error) throw new Error(result.error);
       return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-totals"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
-      toast({ title: "Project Deleted", description: "DFUR project has been successfully deleted." });
+      toast({
+        title: "Project Deleted",
+        description: "DFUR project has been successfully deleted.",
+      });
       setDeleteProject(null);
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Deleting Project", description: error.message || "Failed to delete project. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Project",
+        description: error.message || "Failed to delete project. Please try again.",
+      });
     },
   });
 
@@ -608,7 +783,7 @@ export default function DFUR() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nature of Collection - ECONOMIC SERVICES</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value} required>
                             <FormControl>
                               <SelectTrigger data-testid="select-nature-of-collection">
                                 <SelectValue placeholder="Select category" />
@@ -632,7 +807,7 @@ export default function DFUR() {
                         <FormItem>
                           <FormLabel>Project</FormLabel>
                           <FormControl>
-                            <Input placeholder="Project name" {...field} data-testid="input-project" />
+                            <Input placeholder="Project name" {...field} data-testid="input-project" required/>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -646,7 +821,7 @@ export default function DFUR() {
                         <FormItem>
                           <FormLabel>Location</FormLabel>
                           <FormControl>
-                            <Input placeholder="Project location" {...field} data-testid="input-location" />
+                            <Input placeholder="Project location" {...field} data-testid="input-location" required />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -663,11 +838,14 @@ export default function DFUR() {
                             <FormLabel>Total Cost Approved (₱)</FormLabel>
                             <FormControl>
                               <Input
-                                type="number" step="0.01" placeholder="0.00"
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
                                 value={field.value}
                                 data-testid="input-total-cost-approved"
+                                required
                               />
                             </FormControl>
                             <FormMessage />
@@ -682,11 +860,14 @@ export default function DFUR() {
                             <FormLabel>Total Cost Incurred (₱)</FormLabel>
                             <FormControl>
                               <Input
-                                type="number" step="0.01" placeholder="0.00"
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
                                 value={field.value}
                                 data-testid="input-total-cost-incurred"
+                                required
                               />
                             </FormControl>
                             <FormMessage />
@@ -757,7 +938,10 @@ export default function DFUR() {
                             <FormLabel>No. of Extensions</FormLabel>
                             <FormControl>
                               <Input
-                                type="number" min="0" step="1" placeholder="0"
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="0"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 value={field.value}
@@ -830,7 +1014,10 @@ export default function DFUR() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="text-total-projects">
+              <p
+                className="text-3xl md:text-4xl font-bold text-foreground"
+                data-testid="text-total-projects"
+              >
                 {isTotalsLoading ? "—" : dfurTotals.totalProjects}
               </p>
             </CardContent>
@@ -843,7 +1030,10 @@ export default function DFUR() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl md:text-3xl font-bold text-foreground" data-testid="text-total-approved">
+              <p
+                className="text-2xl md:text-3xl font-bold text-foreground"
+                data-testid="text-total-approved"
+              >
                 {isTotalsLoading ? "—" : formatCurrency(dfurTotals.overallApproved)}
               </p>
             </CardContent>
@@ -856,7 +1046,10 @@ export default function DFUR() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl md:text-4xl font-bold text-foreground" data-testid="text-active-projects">
+              <p
+                className="text-3xl md:text-4xl font-bold text-foreground"
+                data-testid="text-active-projects"
+              >
                 {isTotalsLoading ? "—" : dfurTotals.totalActive}
               </p>
             </CardContent>
@@ -890,6 +1083,7 @@ export default function DFUR() {
                         project={project}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onViewFlags={openFlagDialog}
                       />
                     ))
                   )}
@@ -915,7 +1109,10 @@ export default function DFUR() {
                     <TableBody>
                       {!projects || projects.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell
+                            colSpan={10}
+                            className="text-center py-8 text-muted-foreground"
+                          >
                             No DFUR projects found
                           </TableCell>
                         </TableRow>
@@ -924,7 +1121,11 @@ export default function DFUR() {
                           <TableRow
                             key={project.id}
                             data-testid={`row-dfur-${project.id}`}
-                            className={project.is_flagged === true ? "bg-red-500/20 border-red-500/50" : ""}
+                            className={
+                              project.is_flagged === true
+                                ? "bg-red-500/20 border-red-500/50"
+                                : ""
+                            }
                           >
                             <TableCell className="font-mono text-sm">
                               {project.transaction_id}
@@ -932,7 +1133,9 @@ export default function DFUR() {
                             <TableCell className="font-medium max-w-[200px] truncate">
                               {project.project}
                             </TableCell>
-                            <TableCell className="text-sm">{project.name_of_collection}</TableCell>
+                            <TableCell className="text-sm">
+                              {project.name_of_collection}
+                            </TableCell>
                             <TableCell className="text-sm">{project.location}</TableCell>
                             <TableCell className="text-right font-semibold">
                               {formatCurrency(project.total_cost_approved)}
@@ -941,11 +1144,16 @@ export default function DFUR() {
                               {formatCurrency(project.total_cost_incurred)}
                             </TableCell>
                             <TableCell>
-                              <Badge className={getStatusColor(project.status)} variant="outline">
+                              <Badge
+                                className={getStatusColor(project.status)}
+                                variant="outline"
+                              >
                                 {project.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-center">{project.no_extensions}</TableCell>
+                            <TableCell className="text-center">
+                              {project.no_extensions}
+                            </TableCell>
                             <TableCell className="text-center">
                               {project.is_flagged === true ? (
                                 <p className="flex items-center justify-center gap-2 text-xs font-semibold">
@@ -959,6 +1167,18 @@ export default function DFUR() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2 justify-center">
+                                {/* Eye / View Flag Comments */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    openFlagDialog(project.id, project.transaction_id)
+                                  }
+                                  data-testid={`button-view-flags-${project.id}`}
+                                  title="View flag comments"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -999,11 +1219,6 @@ export default function DFUR() {
           </CardContent>
         </Card>
 
-        {/*
-          Excel Upload Dialog:
-          - type="dfur" hardcoded — always sends data_type="dfur" to /post-bulk
-          - Invalidates "dfur-projects" and "dfur-totals" query keys on success
-        */}
         <AboExcelUploadDialog
           type="dfur"
           open={uploadDialogOpen}
@@ -1011,20 +1226,29 @@ export default function DFUR() {
         />
 
         {/* Delete Dialog */}
-        <AlertDialog open={!!deleteProject} onOpenChange={(open) => !open && setDeleteProject(null)}>
+        <AlertDialog
+          open={!!deleteProject}
+          onOpenChange={(open) => !open && setDeleteProject(null)}
+        >
           <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
             <AlertDialogHeader>
               <AlertDialogTitle>Delete DFUR Project?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete project "{deleteProject?.project}"? This action cannot be undone.
+                Are you sure you want to delete project "{deleteProject?.project}"? This
+                action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel data-testid="button-cancel-delete" className="w-full sm:w-auto">
+              <AlertDialogCancel
+                data-testid="button-cancel-delete"
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteProject && deleteProjectMutation.mutate(deleteProject.id)}
+                onClick={() =>
+                  deleteProject && deleteProjectMutation.mutate(deleteProject.id)
+                }
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                 data-testid="button-confirm-delete"
               >
@@ -1033,6 +1257,14 @@ export default function DFUR() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Flag Comments Dialog */}
+        <FlagCommentsDialog
+          open={flagDialog.open}
+          onOpenChange={(open) => setFlagDialog((prev) => ({ ...prev, open }))}
+          recordId={flagDialog.recordId}
+          transactionId={flagDialog.transactionId}
+        />
       </div>
     </EncoderLayout>
   );

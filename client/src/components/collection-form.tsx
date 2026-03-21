@@ -115,6 +115,7 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
   const natureOptions = getAllNatureOptions();
 
   const form = useForm<InsertCollection>({
+    mode: "onSubmit",
     defaultValues: collection
       ? {
           transactionId: collection.transactionId,
@@ -145,13 +146,11 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
   });
 
   const toDateInputValue = (dateString?: string) => {
-  if (!dateString) return "";
-
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-
-  return date.toISOString().split("T")[0]; // yyyy-MM-dd
-};
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0]; // yyyy-MM-dd
+  };
 
   // Reset form when dialog closes or collection prop changes
   useEffect(() => {
@@ -189,48 +188,47 @@ export function CollectionForm({ collection, trigger }: CollectionFormProps) {
   }, [open, collection, form, isEditMode]);
 
   // Fetch new transaction ID when dialog opens (only for create mode)
-useEffect(() => {
-  if (open && !isEditMode) {
-    setIdGenerationError(false);
+  useEffect(() => {
+    if (open && !isEditMode) {
+      setIdGenerationError(false);
 
-    apiCall<{
-      transaction_id?: string;
-      transactionId?: string;
-      div_number?: number;
-    }>(api.collections.generateId)
-      .then((result) => {
-        if (result.error) {
-          throw new Error(result.error);
-        }
+      apiCall<{
+        transaction_id?: string;
+        transactionId?: string;
+        div_number?: number;
+      }>(api.collections.generateId)
+        .then((result) => {
+          if (result.error) {
+            throw new Error(result.error);
+          }
 
-        const data = result.data as any;
+          const data = result.data as any;
 
-        const transactionId =
-          data?.transaction_id ?? data?.transactionId;
+          const transactionId =
+            data?.transaction_id ?? data?.transactionId;
 
-        const divNumber = data?.div_number;
+          const divNumber = data?.div_number;
 
-        if (transactionId) {
-          setTransactionId(transactionId);
-          form.setValue("transactionId", transactionId);
-        }
+          if (transactionId) {
+            setTransactionId(transactionId);
+            form.setValue("transactionId", transactionId);
+          }
 
-        if (divNumber) {
-          form.setValue("orNumber", String(divNumber));
-        }
-      })
-      .catch(() => {
-        setIdGenerationError(true);
-        toast({
-          variant: "destructive",
-          title: "Error Generating Transaction ID",
-          description:
-            "Unable to generate transaction ID. Please close and reopen the form.",
+          if (divNumber) {
+            form.setValue("orNumber", String(divNumber));
+          }
+        })
+        .catch(() => {
+          setIdGenerationError(true);
+          toast({
+            variant: "destructive",
+            title: "Error Generating Transaction ID",
+            description:
+              "Unable to generate transaction ID. Please close and reopen the form.",
+          });
         });
-      });
-  }
-}, [open, isEditMode, form, toast]);
-
+    }
+  }, [open, isEditMode, form, toast]);
 
   const saveCollection = useMutation({
     mutationFn: async (data: InsertCollection) => {
@@ -321,6 +319,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="transactionId"
+              rules={{ required: "Transaction ID is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Transaction ID</FormLabel>
@@ -342,6 +341,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="transactionDate"
+              rules={{ required: "Transaction date is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Transaction Date</FormLabel>
@@ -361,6 +361,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="natureOfCollection"
+              rules={{ required: "Nature of collection is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nature of Collection</FormLabel>
@@ -501,6 +502,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="fundSource"
+              rules={{ required: "Fund source is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fund Source</FormLabel>
@@ -527,6 +529,11 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="amount"
+              rules={{
+                required: "Amount is required",
+                validate: (value) =>
+                  parseFloat(value) > 0 || "Amount must be greater than 0",
+              }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount (₱)</FormLabel>
@@ -548,6 +555,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="payor"
+              rules={{ required: "Payor is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payor</FormLabel>
@@ -567,6 +575,7 @@ useEffect(() => {
             <FormField
               control={form.control}
               name="orNumber"
+              rules={{ required: "OR Number is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>OR Number</FormLabel>
@@ -578,7 +587,6 @@ useEffect(() => {
                       className={!isEditMode ? "bg-muted" : ""}
                       data-testid="input-or-number"
                     />
-
                   </FormControl>
                   <FormMessage />
                 </FormItem>
