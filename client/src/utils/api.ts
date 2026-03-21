@@ -69,3 +69,85 @@ export async function apiCall<T>(
     return { error: "Unable to connect to the server. Please try again." };
   }
 }
+
+import type {
+  Collection,
+  Disbursement,
+  BudgetEntry,
+  DfurProject,
+  DfurApiResponse,
+  Comment,
+  BackendCollection,
+  BackendDisbursement,
+  BackendBudgetEntry,
+} from "../types";
+import {
+  backendCollectionToFrontend,
+  backendDisbursementToFrontend,
+  backendBudgetEntryToFrontend,
+} from "../utils/converters";
+
+
+export const fetchCollections = async (): Promise<Collection[]> => {
+  const response = await fetch(`${API_BASE_URL}/get-collection`);
+  if (!response.ok) throw new Error("Failed to fetch collections");
+  const data = await response.json();
+  const backendData: BackendCollection[] = data.data || data || [];
+  if (Array.isArray(backendData)) return backendData.map(backendCollectionToFrontend);
+  return [];
+};
+
+export const fetchDisbursements = async (): Promise<Disbursement[]> => {
+  const response = await fetch(`${API_BASE_URL}/get-disbursement`);
+  if (!response.ok) throw new Error("Failed to fetch disbursements");
+  const data = await response.json();
+  const backendData: BackendDisbursement[] = data.data || data || [];
+  if (Array.isArray(backendData)) return backendData.map(backendDisbursementToFrontend);
+  return [];
+};
+
+export const fetchBudgetEntries = async (): Promise<BudgetEntry[]> => {
+  const currentYear = new Date().getFullYear();
+  const response = await fetch(`${API_BASE_URL}/get-budget-entries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ year: currentYear }),
+  });
+  if (!response.ok) throw new Error("Failed to fetch ABO budget entries");
+  const data = await response.json();
+  const backendData: BackendBudgetEntry[] = data.data || data || [];
+  if (Array.isArray(backendData)) return backendData.map(backendBudgetEntryToFrontend);
+  return [];
+};
+
+export const fetchDfurProjects = async (): Promise<DfurProject[]> => {
+  const response = await fetch(`${API_BASE_URL}/get-dfur-project`);
+  if (!response.ok) throw new Error("Failed to fetch DFUR projects");
+  const data: DfurApiResponse = await response.json();
+  return data.data || [];
+};
+
+export const fetchComments = async (): Promise<Comment[]> => {
+  const response = await fetch(`${API_BASE_URL}/get-all-comments`);
+  if (!response.ok) throw new Error("Failed to fetch comments");
+  const data: Comment[] = await response.json();
+  if (!Array.isArray(data)) return [];
+  return data.sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateB - dateA;
+  });
+};
+
+export const submitComment = async (payload: {
+  name: string;
+  email: string;
+  comment: string;
+}): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/insert-comment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error("Failed to submit comment");
+};

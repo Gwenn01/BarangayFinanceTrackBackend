@@ -2,12 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import {
   backendCollectionToFrontend,
   backendDisbursementToFrontend,
-  Collection,
-  DfurApiResponse,
-  DfurProject,
-  Disbursement,
-} from "@/pages/viewer/dashboard";
+  backendBudgetEntryToFrontend,
+} from "../utils/converters";
 import { API_BASE_URL } from "@/utils/api";
+
+import type { Collection, Disbursement, BudgetEntry, DfurProject, Comment } from "../types";
 
 /* -------------------- TYPES -------------------- */
 
