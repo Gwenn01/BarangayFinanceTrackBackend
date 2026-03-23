@@ -7,6 +7,9 @@ import {
   Eye,
   Flag,
   Check,
+  MessageSquare,
+  User,
+  Clock,
 } from "lucide-react";
 import { CheckerLayout } from "../../components/checker-layout";
 import { Button } from "../../components/ui/button";
@@ -35,6 +38,7 @@ import { Badge } from "../../components/ui/badge";
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/auth-context";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "https://barangayfinancetrackbackenddeployment.onrender.com/api";
@@ -206,6 +210,78 @@ function ProjectCard({
   );
 }
 
+/* -------------------- VIEW FLAG COMMENTS -------------------- */
+
+type FlagComment = {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  flagged_by: number;
+  username: string;
+};
+
+function ViewFlagComments({ recordId }: { recordId: string }) {
+  const { data: comments = [], isLoading } = useQuery<FlagComment[]>({
+    queryKey: ["flag-comments", "dfur", recordId],
+    queryFn: async () => {
+      const url = `${API_BASE_URL}/get-flag-comments?flag_type=dfur&record_id=${recordId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch flag comments");
+      const data = await response.json();
+      return data.data || [];
+    },
+    enabled: !!recordId,
+    staleTime: 0,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 pt-1">
+        <Flag className="h-4 w-4 text-red-500" />
+        <p className="text-sm font-semibold">Flag Comments</p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-6 text-muted-foreground gap-2 border rounded-lg">
+          <MessageSquare className="h-7 w-7 opacity-40" />
+          <p className="text-xs">No flag comments for this record.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-3 space-y-1.5"
+            >
+              <p className="text-sm leading-relaxed text-foreground">
+                {comment.comment_text}
+              </p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
+                <span className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="font-medium">{comment.username}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {comment.created_at
+                    ? format(new Date(comment.created_at), "MMM dd, yyyy hh:mm a")
+                    : "—"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------- PAGE -------------------- */
 
 export default function CheckerDFUR() {
@@ -213,6 +289,7 @@ export default function CheckerDFUR() {
   const [viewProject, setViewProject] = useState<DfurProject | null>(null);
   const [flagComment, setFlagComment] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   /* Fetch projects */
   const { data: apiData, isLoading } = useQuery<ApiResponse>({
@@ -237,32 +314,42 @@ export default function CheckerDFUR() {
   const projects = apiData?.data || [];
 
   /* Flag mutation */
-  const reviewProject = useMutation({
-    mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
-      const reviewedBy = localStorage.getItem("user_id") || "1";
-      const payload = { dfur_id: id, reviewed_by: parseInt(reviewedBy), comment, flag_type: "dfur" };
-      const response = await fetch(`${API_BASE_URL}/put-flag-comment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to flag project. Please try again.");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
-      queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
-      toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
-      setSelectedProject(null);
-      setFlagComment("");
-    },
-    onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Flagging Project", description: error.message || "Failed to flag project. Please try again." });
-    },
-  });
+/* Flag mutation */
+    const reviewProject = useMutation({
+      mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
+        const payload = {
+          dfur_id: id,
+          comment,
+          flagged_by: user?.id ?? null,
+          flag_type: "dfur",
+          username: user?.username ?? "",
+        };
+
+        console.log("Flagging project with payload:", payload); // Debug log
+
+        const response = await fetch(`${API_BASE_URL}/insert-flag-comment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to flag project. Please try again.");
+        }
+        return response.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
+        queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
+        toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
+        setSelectedProject(null);
+        setFlagComment("");
+      },
+      onError: (error: Error) => {
+        toast({ variant: "destructive", title: "Error Flagging Project", description: error.message || "Failed to flag project. Please try again." });
+      },
+    });
 
   const handleFlag = () => {
     if (!selectedProject) return;
@@ -519,12 +606,8 @@ export default function CheckerDFUR() {
                   </div>
                 )}
 
-                {viewProject.review_comment && (
-                  <div className="bg-muted p-4 rounded-md">
-                    <p className="text-sm text-muted-foreground">Review Comment</p>
-                    <p className="font-medium">{viewProject.review_comment}</p>
-                  </div>
-                )}
+                {/* ── Flag Comments Section ── */}
+                <ViewFlagComments recordId={String(viewProject.id)} />
               </div>
             )}
           </DialogContent>
