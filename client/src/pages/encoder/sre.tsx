@@ -56,7 +56,7 @@ import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 import { queryClient } from "../../lib/queryClient";
 import { useToast } from "../../hooks/use-toast";
 import { api, apiCall } from "../../utils/api";
-import { exportSREToPDF } from "../../utils/exportSREToPDF";
+import { exportSREToExcel } from "../../utils/exportSREToExcel";
 import { useAuth } from "../../contexts/auth-context";
 
 /* -------------------- BACKEND TYPES -------------------- */
@@ -785,35 +785,27 @@ export default function SRE() {
   );
   const netBalance = totalReceipts - totalExpenditures;
 
-  /* Export */
-  const handleExport = () => {
-    try {
-      setIsExporting(true);
-      exportSREToPDF({
-        startDate,
-        endDate,
-        collections: filteredCollections,
-        disbursements: filteredDisbursements,
-        totalReceipts,
-        totalExpenditures,
-        netBalance,
-      });
-      toast({
-        title: "Export Successful",
-        description: "SRE report has been downloaded successfully.",
-      });
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({
-        variant: "destructive",
-        title: "Export Failed",
-        description: "Failed to export SRE report. Please try again.",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
+const handleExport = async () => {
+  try {
+    setIsExporting(true);
+    await exportSREToExcel({
+      startDate,
+      endDate,
+      activeView,                  // ← add this
+      collections: filteredCollections,
+      disbursements: filteredDisbursements,
+      totalReceipts,
+      totalExpenditures,
+      // netBalance no longer needed, remove it
+    });
+    toast({ title: "Export Successful", description: "SRE Excel report downloaded." });
+  } catch (error) {
+    console.error("Error exporting Excel:", error);
+    toast({ variant: "destructive", title: "Export Failed", description: "Please try again." });
+  } finally {
+    setIsExporting(false);
+  }
+};
   const skeletonRows = [1, 2, 3, 4];
 
   return (
@@ -842,7 +834,7 @@ export default function SRE() {
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">
-              {isExporting ? "Exporting..." : "Export SRE"}
+              {isExporting ? "Exporting..." : "Export Excel"}
             </span>
             <span className="sm:hidden">{isExporting ? "..." : "Export"}</span>
           </Button>

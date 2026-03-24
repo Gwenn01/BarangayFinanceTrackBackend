@@ -86,10 +86,7 @@ export default function EncoderDashboard() {
               Select a module to begin encoding financial data
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full w-fit">
-            <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
-            <span>Live data</span>
-          </div>
+
         </div>
 
         {/* Metric Cards */}

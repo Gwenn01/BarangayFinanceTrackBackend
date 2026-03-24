@@ -15,6 +15,7 @@ import {
   MessageSquare,
   User,
   Clock,
+  Download
 } from "lucide-react";
 import { EncoderLayout } from "../../components/encoder-layout";
 import { Button } from "../../components/ui/button";
@@ -76,6 +77,7 @@ import { useToast } from "../../hooks/use-toast";
 import { format } from "date-fns";
 import { api, apiCall } from "../../utils/api";
 import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
+import { exportDFURToExcel } from "../../utils/exportDFURToExcel";
 
 /* -------------------- TYPES -------------------- */
 
@@ -698,6 +700,10 @@ export default function DFUR() {
     setOpen(isOpen);
   };
 
+  const handleExport = async () => {
+    await exportDFURToExcel(projects);
+  };
+
   return (
     <EncoderLayout>
       <div className="p-4 md:p-8 space-y-4 md:space-y-6">
@@ -726,6 +732,18 @@ export default function DFUR() {
               <FileSpreadsheet className="h-4 w-4 text-green-600" />
               <span className="hidden sm:inline">Upload Excel</span>
               <span className="sm:hidden">Upload</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleExport}
+              data-testid="button-export-excel"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export Excel</span>
+              <span className="sm:hidden">Export</span>
             </Button>
 
             <Dialog open={open} onOpenChange={handleDialogClose}>
