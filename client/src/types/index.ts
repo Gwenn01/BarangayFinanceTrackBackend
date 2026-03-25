@@ -65,9 +65,11 @@ export type Collection = {
   fund_source: string;
   created_at?: string;
   is_flagged?: boolean;
+  or_number: number;
 };
 
 export type Disbursement = {
+  transaction_id: string;
   id: number;
   transaction_date: string | null;
   category: string;
@@ -77,6 +79,7 @@ export type Disbursement = {
   fund_source: string;
   created_at?: string;
   is_flagged?: boolean;
+  dv_number?: number;
 };
 
 export type BudgetEntry = {

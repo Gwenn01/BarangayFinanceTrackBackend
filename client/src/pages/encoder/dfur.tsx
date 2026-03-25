@@ -709,7 +709,7 @@ export default function DFUR() {
       <div className="p-4 md:p-8 space-y-4 md:space-y-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 flex-col md:flex-row">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
               Development Fund Utilization Report
@@ -721,7 +721,7 @@ export default function DFUR() {
           </div>
 
           {/* Header action buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
