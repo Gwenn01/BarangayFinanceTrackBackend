@@ -607,6 +607,7 @@ export default function ApproverSRE() {
             handleReviewClick(collection, "collection", "flagged")
           }
           data-testid={`button-flag-collection-${collection.id}`}
+          disabled={collection.is_flagged === true}
         >
           <Flag className="h-4 w-4 mr-1" />
           Flag
@@ -697,6 +698,7 @@ export default function ApproverSRE() {
             handleReviewClick(disbursement, "disbursement", "flagged")
           }
           data-testid={`button-flag-disbursement-${disbursement.id}`}
+          disabled={disbursement.is_flagged === true}
         >
           <Flag className="h-4 w-4 mr-1" />
           Flag
@@ -887,6 +889,7 @@ export default function ApproverSRE() {
                                       )
                                     }
                                     data-testid={`button-flag-collection-${collection.id}`}
+                                    disabled={collection.is_flagged === true}
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag
@@ -1062,6 +1065,7 @@ export default function ApproverSRE() {
                                       )
                                     }
                                     data-testid={`button-flag-disbursement-${disbursement.id}`}
+                                    disabled={disbursement.is_flagged === true}
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag

@@ -12,6 +12,7 @@ import {
   Wallet,
   BarChart3,
   Check,
+  MessageSquare, User, Clock
 } from "lucide-react";
 import { ReviewerLayout } from "../../components/reviewer-layout";
 import { Button } from "../../components/ui/button";
@@ -165,6 +166,66 @@ export default function ReviewerDashboard() {
     if (!approved) return 0;
     return Math.min(100, Math.round((incurred / approved) * 100));
   })();
+
+  type FlagComment = {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  flagged_by: number;
+  username: string;
+};
+
+function ViewFlagComments({ recordId }: { recordId: string }) {
+  const { data: comments = [], isLoading } = useQuery<FlagComment[]>({
+    queryKey: ["flag-comments", "dfur", recordId],
+    queryFn: async () => {
+      const url = `${API_BASE_URL}/get-flag-comments?flag_type=dfur&record_id=${recordId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch flag comments");
+      const data = await response.json();
+      return data.data || [];
+    },
+    enabled: !!recordId,
+    staleTime: 0,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 pt-1">
+        <Flag className="h-4 w-4 text-red-500" />
+        <p className="text-sm font-semibold">Flag Comments</p>
+      </div>
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-6 text-muted-foreground gap-2 border rounded-lg">
+          <MessageSquare className="h-7 w-7 opacity-40" />
+          <p className="text-xs">No flag comments for this record.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          {comments.map((comment) => (
+            <div key={comment.id} className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-3 space-y-1.5">
+              <p className="text-sm leading-relaxed text-foreground">{comment.comment_text}</p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
+                <span className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" />
+                  <span className="font-medium">{comment.username}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {comment.created_at ? format(new Date(comment.created_at), "MMM dd, yyyy hh:mm a") : "—"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
   // Mobile project card
   const ProjectCard = ({ project }: { project: DfurProject }) => (
@@ -473,9 +534,9 @@ export default function ReviewerDashboard() {
                         projects.map((project) => (
                           <TableRow
                             key={project.id}
-                            className="hover:bg-muted/30 transition-colors"
+                            //className="hover:bg-muted/30 transition-colors"
                             data-testid={`row-dfur-${project.id}`}
-                            className={`${project.is_flagged === true ? "bg-red-500/40" : ""}`}
+                            className={`${project.is_flagged === true ? "bg-red-500/20" : ""}`}
                           >
                             <TableCell className="font-mono text-sm">
                               {project.transaction_id}
@@ -698,6 +759,9 @@ export default function ReviewerDashboard() {
                   </p>
                 </div>
               )}
+              
+              <ViewFlagComments recordId={String(viewProject.id)} />
+
             </div>
           )}
         </DialogContent>

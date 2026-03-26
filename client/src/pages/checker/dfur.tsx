@@ -199,7 +199,7 @@ function ProjectCard({
           variant="outline"
           className="flex-1 gap-1 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(project)}
-          disabled={project.review_status === "flagged"}
+          disabled={project.review_status === "flagged" || project.is_flagged === true}
           data-testid={`button-flag-${project.id}`}
         >
           <Flag className="h-3.5 w-3.5" />
@@ -510,7 +510,7 @@ export default function CheckerDFUR() {
                                   variant="outline"
                                   className="text-red-600 border-red-300 hover:bg-red-50"
                                   onClick={() => setSelectedProject(project)}
-                                  disabled={project.review_status === "flagged"}
+                                  disabled={project.review_status === "flagged" || project.is_flagged === true}
                                   data-testid={`button-flag-${project.id}`}
                                 >
                                   <Flag className="h-4 w-4 mr-1" />

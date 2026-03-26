@@ -427,7 +427,7 @@ export default function ApproverDFUR() {
           size="sm" variant="outline"
           className="flex-1 text-red-600 border-red-300 hover:bg-red-50 touch-manipulation"
           onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
-          disabled={project.review_status === "approved"}
+          disabled={project.review_status === "approved" || project.is_flagged === true}
           data-testid={`button-flag-${project.id}`}
         >
           <Flag className="h-4 w-4 mr-1" /> Flag
@@ -585,7 +585,7 @@ export default function ApproverDFUR() {
                                   size="sm" variant="outline"
                                   className="text-red-600 border-red-300 hover:bg-red-50"
                                   onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
-                                  disabled={project.review_status === "approved"}
+                                  disabled={project.review_status === "approved" || project.is_flagged === true}
                                   data-testid={`button-flag-${project.id}`}
                                 >
                                   <Flag className="h-4 w-4 mr-1" /> Flag

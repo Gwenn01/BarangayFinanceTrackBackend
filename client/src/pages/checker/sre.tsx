@@ -292,6 +292,7 @@ function CollectionCard({
           className="flex-1 gap-1.5 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(collection)}
           data-testid={`button-flag-collection-${collection.id}`}
+          disabled={collection.is_flagged === true}
         >
           <Flag className="h-3.5 w-3.5" />
           Flag
@@ -376,6 +377,7 @@ function DisbursementCard({
           className="flex-1 gap-1.5 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(disbursement)}
           data-testid={`button-flag-disbursement-${disbursement.id}`}
+          disabled={disbursement.is_flagged === true}
         >
           <Flag className="h-3.5 w-3.5" />
           Flag
@@ -709,6 +711,7 @@ export default function CheckerSRE() {
                                       )
                                     }
                                     data-testid={`button-flag-collection-${collection.id}`}
+                                    disabled={collection.is_flagged === true} 
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag
@@ -862,6 +865,7 @@ export default function CheckerSRE() {
                                       )
                                     }
                                     data-testid={`button-flag-disbursement-${disbursement.id}`}
+                                    disabled={disbursement.is_flagged === true}
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag
