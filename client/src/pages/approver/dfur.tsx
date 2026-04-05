@@ -76,6 +76,14 @@ type TotalDataResponse = {
   total_pending: number;
 };
 
+type FlagComment = {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  flagged_by: number;
+  username: string;
+};
+
 /* -------------------- HELPERS -------------------- */
 
 const getStatusColor = (status: string) => {
@@ -173,14 +181,6 @@ function Pagination({
 
 /* -------------------- VIEW FLAG COMMENTS -------------------- */
 
-type FlagComment = {
-  id: number;
-  comment_text: string;
-  created_at: string;
-  flagged_by: number;
-  username: string;
-};
-
 function ViewFlagComments({ recordId }: { recordId: string }) {
   const { data: comments = [], isLoading } = useQuery<FlagComment[]>({
     queryKey: ["flag-comments", "dfur", recordId],
@@ -201,7 +201,6 @@ function ViewFlagComments({ recordId }: { recordId: string }) {
         <Flag className="h-4 w-4 text-red-500" />
         <p className="text-sm font-semibold">Flag Comments</p>
       </div>
-
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => (
@@ -220,9 +219,7 @@ function ViewFlagComments({ recordId }: { recordId: string }) {
               key={comment.id}
               className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-3 space-y-1.5"
             >
-              <p className="text-sm leading-relaxed text-foreground">
-                {comment.comment_text}
-              </p>
+              <p className="text-sm leading-relaxed text-foreground">{comment.comment_text}</p>
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
                 <span className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
@@ -279,6 +276,42 @@ export default function ApproverDFUR() {
     currentPage * PAGE_SIZE
   );
 
+  /* Track which DFUR records the current user has already flagged */
+  const { data: userFlaggedDfur } = useQuery<Set<number>>({
+    queryKey: ["user-flagged-dfur-approver", user?.id, projects.map((p) => p.id).join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        projects.map(async (p) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/get-flag-comments?flag_type=dfur&record_id=${p.id}`
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            const comments: FlagComment[] = data.data || [];
+            return comments.some((c) => Number(c.flagged_by) === Number(user?.id))
+              ? p.id
+              : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return new Set(results.filter((id): id is number => id !== null));
+    },
+    enabled: projects.length > 0 && !!user?.id,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    placeholderData: undefined,
+  });
+
+  /** Disable Flag button only if THIS user has already flagged this project */
+  const isFlagDisabled = (project: DfurProject): boolean =>
+    userFlaggedDfur?.has(project.id) ?? false;
+
   // Approve mutation
   const approveProject = useMutation({
     mutationFn: async ({ id }: { id: number }) => {
@@ -307,7 +340,7 @@ export default function ApproverDFUR() {
     },
   });
 
-  // Flag mutation — updated to use insert-flag-comment
+  // Flag mutation
   const flagProject = useMutation({
     mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
       const payload = {
@@ -317,8 +350,6 @@ export default function ApproverDFUR() {
         flag_type: "dfur",
         username: user?.username ?? "",
       };
-
-      console.log("Flagging project with payload:", payload); // Debug log
       const response = await fetch(`${API_BASE_URL}/insert-flag-comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -333,6 +364,8 @@ export default function ApproverDFUR() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
       queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
+      // Invalidate so Flag button disables immediately for this user
+      queryClient.invalidateQueries({ queryKey: ["user-flagged-dfur-approver", user?.id] });
       toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
       setSelectedProject(null);
       setReviewAction(null);
@@ -372,7 +405,7 @@ export default function ApproverDFUR() {
     }
   };
 
-  const ProjectCard = ({ project }: { project: DfurProject }) => (
+  const ProjectCard = ({ project, isFlagDisabled }: { project: DfurProject; isFlagDisabled: boolean }) => (
     <div
       className={`rounded-lg border p-4 space-y-3 ${project.is_flagged === true ? "bg-red-500/20" : "bg-card"} transition-all duration-200`}
       data-testid={`row-dfur-${project.id}`}
@@ -427,7 +460,7 @@ export default function ApproverDFUR() {
           size="sm" variant="outline"
           className="flex-1 text-red-600 border-red-300 hover:bg-red-50 touch-manipulation"
           onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
-          disabled={project.review_status === "approved" || project.is_flagged === true}
+          disabled={project.review_status === "approved" || isFlagDisabled}
           data-testid={`button-flag-${project.id}`}
         >
           <Flag className="h-4 w-4 mr-1" /> Flag
@@ -514,7 +547,7 @@ export default function ApproverDFUR() {
                   ) : (
                     <>
                       {paginatedProjects.map((project) => (
-                        <ProjectCard key={project.id} project={project} />
+                        <ProjectCard key={project.id} project={project} isFlagDisabled={isFlagDisabled(project)} />
                       ))}
                       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                     </>
@@ -585,7 +618,7 @@ export default function ApproverDFUR() {
                                   size="sm" variant="outline"
                                   className="text-red-600 border-red-300 hover:bg-red-50"
                                   onClick={() => { setSelectedProject(project); setReviewAction("flagged"); }}
-                                  disabled={project.review_status === "approved" || project.is_flagged === true}
+                                  disabled={project.review_status === "approved" || isFlagDisabled(project)}
                                   data-testid={`button-flag-${project.id}`}
                                 >
                                   <Flag className="h-4 w-4 mr-1" /> Flag
@@ -681,9 +714,7 @@ export default function ApproverDFUR() {
                   <p className="font-medium mt-1">{viewProject.review_comment}</p>
                 </div>
               )}
-
-              {/* ── Flag Comments Section ── */}
-                <ViewFlagComments recordId={String(viewProject.id)} />
+              <ViewFlagComments recordId={String(viewProject.id)} />
             </div>
           )}
         </DialogContent>
@@ -736,7 +767,7 @@ export default function ApproverDFUR() {
               </Button>
               <Button
                 onClick={handleReview}
-                disabled={approveProject.isPending || flagProject.isPending || (reviewAction === "flagged" && !reviewComment.trim())}
+                disabled={approveProject.isPending || flagProject.isPending }
                 variant={reviewAction === "approved" ? "default" : "destructive"}
                 className="w-full sm:w-auto"
                 data-testid="button-confirm-review"
