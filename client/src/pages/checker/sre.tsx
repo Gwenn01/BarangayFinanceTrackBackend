@@ -35,14 +35,7 @@ import {
 import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
 import { useToast } from "../../hooks/use-toast";
-import {
-  Check,
-  Flag,
-  Eye,
-  MessageSquare,
-  User,
-  Clock,
-} from "lucide-react";
+import { Check, Flag, Eye, MessageSquare, User, Clock } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { format } from "date-fns";
 import { CheckerLayout } from "../../components/checker-layout";
@@ -88,6 +81,7 @@ type FlagComment = {
   created_at: string;
   flagged_by: number;
   username: string;
+  record_id?: string;
 };
 
 /* -------------------- HELPERS -------------------- */
@@ -112,17 +106,9 @@ const formatDate = (dateString: string | null) => {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "approved":
-      return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-          Approved
-        </Badge>
-      );
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
     case "flagged":
-      return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-          Flagged
-        </Badge>
-      );
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Flagged</Badge>;
     default:
       return <Badge variant="outline">Pending</Badge>;
   }
@@ -167,9 +153,7 @@ function FlagCommentsDialog({
           </DialogTitle>
           <DialogDescription>
             Viewing flag remarks for transaction{" "}
-            <span className="font-mono font-semibold text-foreground">
-              {transactionId}
-            </span>
+            <span className="font-mono font-semibold text-foreground">{transactionId}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -177,10 +161,7 @@ function FlagCommentsDialog({
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-20 bg-muted rounded-lg animate-pulse"
-                />
+                <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
               ))}
             </div>
           ) : comments.length === 0 ? (
@@ -194,9 +175,7 @@ function FlagCommentsDialog({
                 key={comment.id}
                 className="border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 space-y-2"
               >
-                <p className="text-sm leading-relaxed text-foreground">
-                  {comment.comment_text}
-                </p>
+                <p className="text-sm leading-relaxed text-foreground">{comment.comment_text}</p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
                   <span className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
@@ -205,10 +184,7 @@ function FlagCommentsDialog({
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     {comment.created_at
-                      ? format(
-                          new Date(comment.created_at),
-                          "MMM dd, yyyy hh:mm a"
-                        )
+                      ? format(new Date(comment.created_at), "MMM dd, yyyy hh:mm a")
                       : "—"}
                   </span>
                 </div>
@@ -227,17 +203,17 @@ function CollectionCard({
   collection,
   onFlag,
   onViewFlags,
+  isDisabled,
 }: {
   collection: Collection;
   onFlag: (c: Collection) => void;
   onViewFlags: (id: string, transactionId: string, type: "collection" | "disbursement") => void;
+  isDisabled: boolean;
 }) {
   return (
     <div
       className={`border rounded-lg p-4 space-y-3 ${
-        collection.is_flagged === true
-          ? "bg-red-500/20 border-red-500"
-          : "bg-card"
+        collection.is_flagged === true ? "bg-red-500/20 border-red-500" : "bg-card"
       }`}
       data-testid={`row-collection-${collection.id}`}
     >
@@ -246,41 +222,23 @@ function CollectionCard({
           {collection.transaction_id}
         </span>
         {getStatusBadge(collection.review_status)}
-        <p>
-          {collection.is_flagged === true && (
-            <Flag className="h-3.5 w-3.5 text-red-500" />
-          )}
-        </p>
+        <p>{collection.is_flagged === true && <Flag className="h-3.5 w-3.5 text-red-500" />}</p>
       </div>
-
-      <p className="text-sm font-medium leading-snug">
-        {collection.nature_of_collection}
-      </p>
-
+      <p className="text-sm font-medium leading-snug">{collection.nature_of_collection}</p>
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
         <span className="truncate">{collection.payor}</span>
-        <span className="flex-shrink-0">
-          {formatDate(collection.transaction_date)}
-        </span>
+        <span className="flex-shrink-0">{formatDate(collection.transaction_date)}</span>
       </div>
-
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          OR: {collection.or_number}
-        </span>
-        <span className="font-bold text-sm">
-          {formatCurrency(collection.amount)}
-        </span>
+        <span className="text-xs text-muted-foreground">OR: {collection.or_number}</span>
+        <span className="font-bold text-sm">{formatCurrency(collection.amount)}</span>
       </div>
-
       <div className="flex gap-2">
         <Button
           size="sm"
           variant="outline"
           className="flex-1 gap-1.5"
-          onClick={() =>
-            onViewFlags(collection.id, collection.transaction_id, "collection")
-          }
+          onClick={() => onViewFlags(collection.id, collection.transaction_id, "collection")}
           data-testid={`button-view-flags-collection-${collection.id}`}
         >
           <Eye className="h-3.5 w-3.5" />
@@ -292,7 +250,7 @@ function CollectionCard({
           className="flex-1 gap-1.5 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(collection)}
           data-testid={`button-flag-collection-${collection.id}`}
-          disabled={collection.is_flagged === true}
+          disabled={isDisabled}
         >
           <Flag className="h-3.5 w-3.5" />
           Flag
@@ -308,17 +266,17 @@ function DisbursementCard({
   disbursement,
   onFlag,
   onViewFlags,
+  isDisabled,
 }: {
   disbursement: Disbursement;
   onFlag: (d: Disbursement) => void;
   onViewFlags: (id: string, transactionId: string, type: "collection" | "disbursement") => void;
+  isDisabled: boolean;
 }) {
   return (
     <div
       className={`border rounded-lg p-4 space-y-3 ${
-        disbursement.is_flagged === true
-          ? "bg-red-500/20 border-red-500"
-          : "bg-card"
+        disbursement.is_flagged === true ? "bg-red-500/20 border-red-500" : "bg-card"
       }`}
       data-testid={`row-disbursement-${disbursement.id}`}
     >
@@ -327,45 +285,23 @@ function DisbursementCard({
           {disbursement.transaction_id}
         </span>
         {getStatusBadge(disbursement.review_status)}
-        <p>
-          {disbursement.is_flagged === true && (
-            <Flag className="h-3.5 w-3.5 text-red-500" />
-          )}
-        </p>
+        <p>{disbursement.is_flagged === true && <Flag className="h-3.5 w-3.5 text-red-500" />}</p>
       </div>
-
-      <p className="text-sm font-medium leading-snug">
-        {disbursement.nature_of_disbursement}
-      </p>
-
+      <p className="text-sm font-medium leading-snug">{disbursement.nature_of_disbursement}</p>
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
         <span className="truncate">{disbursement.payee}</span>
-        <span className="flex-shrink-0">
-          {formatDate(disbursement.transaction_date)}
-        </span>
+        <span className="flex-shrink-0">{formatDate(disbursement.transaction_date)}</span>
       </div>
-
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          OR: {disbursement.or_number || "N/A"}
-        </span>
-        <span className="font-bold text-sm">
-          {formatCurrency(disbursement.amount)}
-        </span>
+        <span className="text-xs text-muted-foreground">OR: {disbursement.or_number || "N/A"}</span>
+        <span className="font-bold text-sm">{formatCurrency(disbursement.amount)}</span>
       </div>
-
       <div className="flex gap-2">
         <Button
           size="sm"
           variant="outline"
           className="flex-1 gap-1.5"
-          onClick={() =>
-            onViewFlags(
-              disbursement.id,
-              disbursement.transaction_id,
-              "disbursement"
-            )
-          }
+          onClick={() => onViewFlags(disbursement.id, disbursement.transaction_id, "disbursement")}
           data-testid={`button-view-flags-disbursement-${disbursement.id}`}
         >
           <Eye className="h-3.5 w-3.5" />
@@ -377,7 +313,7 @@ function DisbursementCard({
           className="flex-1 gap-1.5 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(disbursement)}
           data-testid={`button-flag-disbursement-${disbursement.id}`}
-          disabled={disbursement.is_flagged === true}
+          disabled={isDisabled}
         >
           <Flag className="h-3.5 w-3.5" />
           Flag
@@ -392,9 +328,7 @@ function DisbursementCard({
 export default function CheckerSRE() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"collections" | "disbursements">(
-    "collections"
-  );
+  const [activeTab, setActiveTab] = useState<"collections" | "disbursements">("collections");
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<
     | ((Collection | Disbursement) & { type: "collection" | "disbursement" })
@@ -402,7 +336,6 @@ export default function CheckerSRE() {
   >(null);
   const [reviewComment, setReviewComment] = useState("");
 
-  // Flag comments dialog state
   const [flagDialog, setFlagDialog] = useState<{
     open: boolean;
     recordId: string | null;
@@ -419,9 +352,7 @@ export default function CheckerSRE() {
   };
 
   /* Fetch collections */
-  const { data: collections = [], isLoading: collectionsLoading } = useQuery<
-    Collection[]
-  >({
+  const { data: collections = [], isLoading: collectionsLoading } = useQuery<Collection[]>({
     queryKey: ["collections"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/get-collection`);
@@ -435,19 +366,80 @@ export default function CheckerSRE() {
   });
 
   /* Fetch disbursements */
-  const { data: disbursements = [], isLoading: disbursementsLoading } =
-    useQuery<Disbursement[]>({
-      queryKey: ["disbursements"],
-      queryFn: async () => {
-        const response = await fetch(`${API_BASE_URL}/get-disbursement`);
-        if (!response.ok) throw new Error("Failed to fetch disbursements");
-        return response.json();
-      },
-      staleTime: 0,
-      refetchOnMount: "always",
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-    });
+  const { data: disbursements = [], isLoading: disbursementsLoading } = useQuery<Disbursement[]>({
+    queryKey: ["disbursements"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/get-disbursement`);
+      if (!response.ok) throw new Error("Failed to fetch disbursements");
+      return response.json();
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+
+  /* Fetch flag comments per collection record — runs after collections load */
+  const { data: userFlaggedCollections = new Set<string>() } = useQuery<Set<string>>({
+    queryKey: ["user-flagged-collections", user?.id, collections.map((c) => c.id).join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        collections.map(async (c) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/get-flag-comments?flag_type=collection&record_id=${c.id}`
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            const comments: FlagComment[] = data.data || [];
+            return comments.some((comment) => comment.flagged_by === user?.id) ? c.id : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return new Set(results.filter(Boolean) as string[]);
+    },
+    enabled: collections.length > 0 && !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+
+  /* Fetch flag comments per disbursement record — runs after disbursements load */
+  const { data: userFlaggedDisbursements = new Set<string>() } = useQuery<Set<string>>({
+    queryKey: ["user-flagged-disbursements", user?.id, disbursements.map((d) => d.id).join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        disbursements.map(async (d) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/get-flag-comments?flag_type=disbursement&record_id=${d.id}`
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            const comments: FlagComment[] = data.data || [];
+            return comments.some((comment) => comment.flagged_by === user?.id) ? d.id : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return new Set(results.filter(Boolean) as string[]);
+    },
+    enabled: disbursements.length > 0 && !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+
+  const isUserFlagged = (id: string, type: "collection" | "disbursement"): boolean => {
+    return type === "collection"
+      ? userFlaggedCollections.has(id)
+      : userFlaggedDisbursements.has(id);
+  };
 
   /* Flag mutation */
   const reviewMutation = useMutation({
@@ -469,7 +461,6 @@ export default function CheckerSRE() {
         flag_type: type,
         username: user?.username,
       };
-      console.log("Flag payload:", JSON.stringify(payload));
 
       const response = await fetch(`${API_BASE_URL}/insert-flag-comment`, {
         method: "POST",
@@ -479,21 +470,24 @@ export default function CheckerSRE() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || "Failed to flag transaction. Please try again."
-        );
+        throw new Error(errorData.message || "Failed to flag transaction. Please try again.");
       }
       return response.json();
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
+        queryKey: variables.type === "collection" ? ["collections"] : ["disbursements"],
+      });
+      // Re-run the per-record flag comment checks so button disables immediately
+      queryClient.invalidateQueries({
         queryKey:
-          variables.type === "collection" ? ["collections"] : ["disbursements"],
+          variables.type === "collection"
+            ? ["user-flagged-collections", user?.id]
+            : ["user-flagged-disbursements", user?.id],
       });
       toast({
         title: "Transaction Flagged",
-        description:
-          "The transaction has been flagged for review by the Approver.",
+        description: "The transaction has been flagged for review by the Approver.",
       });
       setReviewDialogOpen(false);
       setReviewComment("");
@@ -503,8 +497,7 @@ export default function CheckerSRE() {
       toast({
         variant: "destructive",
         title: "Review Failed",
-        description:
-          error.message || "Failed to flag transaction. Please try again.",
+        description: error.message || "Failed to flag transaction. Please try again.",
       });
     },
   });
@@ -524,8 +517,7 @@ export default function CheckerSRE() {
       toast({
         variant: "destructive",
         title: "Comment Required",
-        description:
-          "Please provide a comment explaining why this transaction is being flagged.",
+        description: "Please provide a comment explaining why this transaction is being flagged.",
       });
       return;
     }
@@ -536,25 +528,16 @@ export default function CheckerSRE() {
     });
   };
 
-  const totalCollections = collections.reduce(
-    (sum, c) => sum + parseFloat(c.amount),
-    0
-  );
-  const totalDisbursements = disbursements.reduce(
-    (sum, d) => sum + parseFloat(d.amount),
-    0
-  );
+  const totalCollections = collections.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+  const totalDisbursements = disbursements.reduce((sum, d) => sum + parseFloat(d.amount), 0);
 
   return (
     <CheckerLayout>
       <div className="p-4 md:p-8 space-y-4 md:space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
             Statement of Receipts &amp; Expenditures
-            <span className="block md:inline md:ml-2 text-lg md:text-3xl">
-              (SRE)
-            </span>
+            <span className="block md:inline md:ml-2 text-lg md:text-3xl">(SRE)</span>
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Flag transactions with errors for review
@@ -563,9 +546,7 @@ export default function CheckerSRE() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg">
-              Transaction Review
-            </CardTitle>
+            <CardTitle className="text-base md:text-lg">Transaction Review</CardTitle>
             <CardDescription>
               Review transactions and flag any errors for correction
             </CardDescription>
@@ -573,35 +554,22 @@ export default function CheckerSRE() {
           <CardContent className="p-3 md:p-6">
             <Tabs
               value={activeTab}
-              onValueChange={(value) =>
-                setActiveTab(value as "collections" | "disbursements")
-              }
+              onValueChange={(value) => setActiveTab(value as "collections" | "disbursements")}
             >
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="collections" data-testid="tab-collections">
-                  Collections
-                </TabsTrigger>
-                <TabsTrigger
-                  value="disbursements"
-                  data-testid="tab-disbursements"
-                >
-                  Disbursements
-                </TabsTrigger>
+                <TabsTrigger value="collections" data-testid="tab-collections">Collections</TabsTrigger>
+                <TabsTrigger value="disbursements" data-testid="tab-disbursements">Disbursements</TabsTrigger>
               </TabsList>
 
               {/* ========== COLLECTIONS TAB ========== */}
               <TabsContent value="collections" className="mt-4 md:mt-6">
                 {collectionsLoading ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    Loading collections...
-                  </div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">Loading collections...</div>
                 ) : collections.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    No collection transactions found
-                  </div>
+                  <div className="text-center py-8 text-muted-foreground text-sm">No collection transactions found</div>
                 ) : (
                   <>
-                    {/* Mobile: Cards */}
+                    {/* Mobile */}
                     <div className="md:hidden space-y-3">
                       {collections.map((collection) => (
                         <CollectionCard
@@ -609,20 +577,16 @@ export default function CheckerSRE() {
                           collection={collection}
                           onFlag={(c) => handleReviewClick(c, "collection")}
                           onViewFlags={openFlagDialog}
+                          isDisabled={isUserFlagged(collection.id, "collection")}
                         />
                       ))}
-                      {/* Mobile total */}
                       <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                        <span className="text-sm font-semibold">
-                          Total Collections
-                        </span>
-                        <span className="font-bold">
-                          {formatCurrency(totalCollections.toString())}
-                        </span>
+                        <span className="text-sm font-semibold">Total Collections</span>
+                        <span className="font-bold">{formatCurrency(totalCollections.toString())}</span>
                       </div>
                     </div>
 
-                    {/* Desktop: Table */}
+                    {/* Desktop */}
                     <div className="hidden md:block border rounded-lg overflow-hidden">
                       <Table>
                         <TableHeader>
@@ -634,9 +598,7 @@ export default function CheckerSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="text-center">
-                              Is Flagged
-                            </TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -644,57 +606,34 @@ export default function CheckerSRE() {
                           {collections.map((collection) => (
                             <TableRow
                               key={collection.id}
-                              className={
-                                collection.is_flagged === true
-                                  ? "bg-red-500/40"
-                                  : ""
-                              }
+                              className={collection.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-collection-${collection.id}`}
                             >
-                              <TableCell className="font-medium">
-                                {collection.transaction_id}
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(collection.transaction_date)}
-                              </TableCell>
-                              <TableCell className="max-w-xs truncate">
-                                {collection.nature_of_collection}
-                              </TableCell>
+                              <TableCell className="font-medium">{collection.transaction_id}</TableCell>
+                              <TableCell>{formatDate(collection.transaction_date)}</TableCell>
+                              <TableCell className="max-w-xs truncate">{collection.nature_of_collection}</TableCell>
                               <TableCell>{collection.payor}</TableCell>
                               <TableCell>{collection.or_number}</TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(collection.amount)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {getStatusBadge(collection.review_status)}
-                              </TableCell>
+                              <TableCell className="text-right font-medium">{formatCurrency(collection.amount)}</TableCell>
+                              <TableCell className="text-center">{getStatusBadge(collection.review_status)}</TableCell>
                               <TableCell className="text-center">
                                 {collection.is_flagged === true ? (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Flag className="h-4 w-4 text-red-500" />{" "}
-                                    Flagged
+                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
                                   </p>
                                 ) : (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Check className="h-4 w-4 text-green-500" />{" "}
-                                    Not Flagged
+                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
                                   </p>
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex gap-2 justify-center">
-                                  {/* View Flag Comments */}
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-8 w-8 p-0"
-                                    onClick={() =>
-                                      openFlagDialog(
-                                        collection.id,
-                                        collection.transaction_id,
-                                        "collection"
-                                      )
-                                    }
+                                    onClick={() => openFlagDialog(collection.id, collection.transaction_id, "collection")}
                                     data-testid={`button-view-flags-collection-${collection.id}`}
                                     title="View flag comments"
                                   >
@@ -704,14 +643,9 @@ export default function CheckerSRE() {
                                     size="sm"
                                     variant="outline"
                                     className="text-red-600 border-red-300 hover:bg-red-50"
-                                    onClick={() =>
-                                      handleReviewClick(
-                                        collection,
-                                        "collection"
-                                      )
-                                    }
+                                    onClick={() => handleReviewClick(collection, "collection")}
                                     data-testid={`button-flag-collection-${collection.id}`}
-                                    disabled={collection.is_flagged === true} 
+                                    disabled={isUserFlagged(collection.id, "collection")}
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag
@@ -723,15 +657,8 @@ export default function CheckerSRE() {
                         </TableBody>
                         <TableFooter>
                           <TableRow>
-                            <TableCell
-                              colSpan={5}
-                              className="text-right font-semibold"
-                            >
-                              Total Collections:
-                            </TableCell>
-                            <TableCell className="text-right font-bold">
-                              {formatCurrency(totalCollections.toString())}
-                            </TableCell>
+                            <TableCell colSpan={5} className="text-right font-semibold">Total Collections:</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(totalCollections.toString())}</TableCell>
                             <TableCell colSpan={3} />
                           </TableRow>
                         </TableFooter>
@@ -744,16 +671,12 @@ export default function CheckerSRE() {
               {/* ========== DISBURSEMENTS TAB ========== */}
               <TabsContent value="disbursements" className="mt-4 md:mt-6">
                 {disbursementsLoading ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    Loading disbursements...
-                  </div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">Loading disbursements...</div>
                 ) : disbursements.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    No disbursement transactions found
-                  </div>
+                  <div className="text-center py-8 text-muted-foreground text-sm">No disbursement transactions found</div>
                 ) : (
                   <>
-                    {/* Mobile: Cards */}
+                    {/* Mobile */}
                     <div className="md:hidden space-y-3">
                       {disbursements.map((disbursement) => (
                         <DisbursementCard
@@ -761,20 +684,16 @@ export default function CheckerSRE() {
                           disbursement={disbursement}
                           onFlag={(d) => handleReviewClick(d, "disbursement")}
                           onViewFlags={openFlagDialog}
+                          isDisabled={isUserFlagged(disbursement.id, "disbursement")}
                         />
                       ))}
-                      {/* Mobile total */}
                       <div className="border rounded-lg px-4 py-3 bg-muted/40 flex justify-between items-center">
-                        <span className="text-sm font-semibold">
-                          Total Disbursements
-                        </span>
-                        <span className="font-bold">
-                          {formatCurrency(totalDisbursements.toString())}
-                        </span>
+                        <span className="text-sm font-semibold">Total Disbursements</span>
+                        <span className="font-bold">{formatCurrency(totalDisbursements.toString())}</span>
                       </div>
                     </div>
 
-                    {/* Desktop: Table */}
+                    {/* Desktop */}
                     <div className="hidden md:block border rounded-lg overflow-hidden">
                       <Table>
                         <TableHeader>
@@ -786,9 +705,7 @@ export default function CheckerSRE() {
                             <TableHead>OR Number</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="text-center">
-                              Is Flagged
-                            </TableHead>
+                            <TableHead className="text-center">Is Flagged</TableHead>
                             <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -796,59 +713,34 @@ export default function CheckerSRE() {
                           {disbursements.map((disbursement) => (
                             <TableRow
                               key={disbursement.id}
-                              className={
-                                disbursement.is_flagged === true
-                                  ? "bg-red-500/40"
-                                  : ""
-                              }
+                              className={disbursement.is_flagged === true ? "bg-red-500/40" : ""}
                               data-testid={`row-disbursement-${disbursement.id}`}
                             >
-                              <TableCell className="font-medium">
-                                {disbursement.transaction_id}
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(disbursement.transaction_date)}
-                              </TableCell>
-                              <TableCell className="max-w-xs truncate">
-                                {disbursement.nature_of_disbursement}
-                              </TableCell>
+                              <TableCell className="font-medium">{disbursement.transaction_id}</TableCell>
+                              <TableCell>{formatDate(disbursement.transaction_date)}</TableCell>
+                              <TableCell className="max-w-xs truncate">{disbursement.nature_of_disbursement}</TableCell>
                               <TableCell>{disbursement.payee}</TableCell>
-                              <TableCell>
-                                {disbursement.or_number || "N/A"}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(disbursement.amount)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {getStatusBadge(disbursement.review_status)}
-                              </TableCell>
+                              <TableCell>{disbursement.or_number || "N/A"}</TableCell>
+                              <TableCell className="text-right font-medium">{formatCurrency(disbursement.amount)}</TableCell>
+                              <TableCell className="text-center">{getStatusBadge(disbursement.review_status)}</TableCell>
                               <TableCell className="text-center">
                                 {disbursement.is_flagged === true ? (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Flag className="h-4 w-4 text-red-500" />{" "}
-                                    Flagged
+                                    <Flag className="h-4 w-4 text-red-500" /> Flagged
                                   </p>
                                 ) : (
                                   <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                    <Check className="h-4 w-4 text-green-500" />{" "}
-                                    Not Flagged
+                                    <Check className="h-4 w-4 text-green-500" /> Not Flagged
                                   </p>
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <div className="flex gap-2 justify-center">
-                                  {/* View Flag Comments */}
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-8 w-8 p-0"
-                                    onClick={() =>
-                                      openFlagDialog(
-                                        disbursement.id,
-                                        disbursement.transaction_id,
-                                        "disbursement"
-                                      )
-                                    }
+                                    onClick={() => openFlagDialog(disbursement.id, disbursement.transaction_id, "disbursement")}
                                     data-testid={`button-view-flags-disbursement-${disbursement.id}`}
                                     title="View flag comments"
                                   >
@@ -858,14 +750,9 @@ export default function CheckerSRE() {
                                     size="sm"
                                     variant="outline"
                                     className="text-red-600 border-red-300 hover:bg-red-50"
-                                    onClick={() =>
-                                      handleReviewClick(
-                                        disbursement,
-                                        "disbursement"
-                                      )
-                                    }
+                                    onClick={() => handleReviewClick(disbursement, "disbursement")}
                                     data-testid={`button-flag-disbursement-${disbursement.id}`}
-                                    disabled={disbursement.is_flagged === true}
+                                    disabled={isUserFlagged(disbursement.id, "disbursement")}
                                   >
                                     <Flag className="h-4 w-4 mr-1" />
                                     Flag
@@ -877,15 +764,8 @@ export default function CheckerSRE() {
                         </TableBody>
                         <TableFooter>
                           <TableRow>
-                            <TableCell
-                              colSpan={5}
-                              className="text-right font-semibold"
-                            >
-                              Total Disbursements:
-                            </TableCell>
-                            <TableCell className="text-right font-bold">
-                              {formatCurrency(totalDisbursements.toString())}
-                            </TableCell>
+                            <TableCell colSpan={5} className="text-right font-semibold">Total Disbursements:</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(totalDisbursements.toString())}</TableCell>
                             <TableCell colSpan={3} />
                           </TableRow>
                         </TableFooter>
@@ -901,41 +781,27 @@ export default function CheckerSRE() {
 
       {/* Flag Transaction Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent
-          className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg"
-          data-testid="dialog-review"
-        >
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg" data-testid="dialog-review">
           <DialogHeader>
             <DialogTitle>Flag Transaction</DialogTitle>
             <DialogDescription>
               Please explain what issues you found with this transaction.
             </DialogDescription>
           </DialogHeader>
-
           {selectedTransaction && (
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <div className="flex justify-between gap-2">
-                  <span className="text-sm font-medium flex-shrink-0">
-                    Transaction ID:
-                  </span>
-                  <span className="text-sm text-right truncate">
-                    {selectedTransaction.transaction_id}
-                  </span>
+                  <span className="text-sm font-medium flex-shrink-0">Transaction ID:</span>
+                  <span className="text-sm text-right truncate">{selectedTransaction.transaction_id}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm font-medium flex-shrink-0">Amount:</span>
+                  <span className="text-sm">{formatCurrency(selectedTransaction.amount)}</span>
                 </div>
                 <div className="flex justify-between gap-2">
                   <span className="text-sm font-medium flex-shrink-0">
-                    Amount:
-                  </span>
-                  <span className="text-sm">
-                    {formatCurrency(selectedTransaction.amount)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-sm font-medium flex-shrink-0">
-                    {selectedTransaction.type === "collection"
-                      ? "Payor:"
-                      : "Payee:"}
+                    {selectedTransaction.type === "collection" ? "Payor:" : "Payee:"}
                   </span>
                   <span className="text-sm text-right truncate">
                     {selectedTransaction.type === "collection"
@@ -944,7 +810,6 @@ export default function CheckerSRE() {
                   </span>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="review-comment">
                   Comment <span className="text-red-600">*</span>
@@ -960,7 +825,6 @@ export default function CheckerSRE() {
               </div>
             </div>
           )}
-
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button
               variant="outline"

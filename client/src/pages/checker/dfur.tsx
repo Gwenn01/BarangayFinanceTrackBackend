@@ -136,10 +136,12 @@ function ProjectCard({
   project,
   onView,
   onFlag,
+  isFlagDisabled,
 }: {
   project: DfurProject;
   onView: (p: DfurProject) => void;
   onFlag: (p: DfurProject) => void;
+  isFlagDisabled: boolean;
 }) {
   return (
     <div
@@ -158,7 +160,6 @@ function ProjectCard({
         </Badge>
       </div>
 
-      
       {/* Project name */}
       <p className="font-semibold text-sm leading-snug">{project.project}</p>
 
@@ -199,7 +200,7 @@ function ProjectCard({
           variant="outline"
           className="flex-1 gap-1 text-red-600 border-red-300 hover:bg-red-50"
           onClick={() => onFlag(project)}
-          disabled={project.review_status === "flagged" || project.is_flagged === true}
+          disabled={isFlagDisabled}
           data-testid={`button-flag-${project.id}`}
         >
           <Flag className="h-3.5 w-3.5" />
@@ -313,43 +314,80 @@ export default function CheckerDFUR() {
 
   const projects = apiData?.data || [];
 
+  /* Track which DFUR records the current user has already flagged */
+  const { data: userFlaggedDfur } = useQuery<Set<number>>({
+    queryKey: ["user-flagged-dfur", user?.id, projects.map((p) => p.id).join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        projects.map(async (p) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/get-flag-comments?flag_type=dfur&record_id=${p.id}`
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            const comments: FlagComment[] = data.data || [];
+            return comments.some((c) => Number(c.flagged_by) === Number(user?.id))
+              ? p.id
+              : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return new Set(results.filter((id): id is number => id !== null));
+    },
+    enabled: projects.length > 0 && !!user?.id,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    placeholderData: undefined,
+  });
+
+  /** Disable Flag button only if THIS user has already flagged this project */
+  const isFlagDisabled = (project: DfurProject): boolean =>
+    userFlaggedDfur?.has(project.id) ?? false;
+
   /* Flag mutation */
-/* Flag mutation */
-    const reviewProject = useMutation({
-      mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
-        const payload = {
-          dfur_id: id,
-          comment,
-          flagged_by: user?.id ?? null,
-          flag_type: "dfur",
-          username: user?.username ?? "",
-        };
+  const reviewProject = useMutation({
+    mutationFn: async ({ id, comment }: { id: number; comment: string }) => {
+      const payload = {
+        dfur_id: id,
+        comment,
+        flagged_by: user?.id ?? null,
+        flag_type: "dfur",
+        username: user?.username ?? "",
+      };
 
-        console.log("Flagging project with payload:", payload); // Debug log
+      console.log("Flagging project with payload:", payload);
 
-        const response = await fetch(`${API_BASE_URL}/insert-flag-comment`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const response = await fetch(`${API_BASE_URL}/insert-flag-comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Failed to flag project. Please try again.");
-        }
-        return response.json();
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
-        queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
-        toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
-        setSelectedProject(null);
-        setFlagComment("");
-      },
-      onError: (error: Error) => {
-        toast({ variant: "destructive", title: "Error Flagging Project", description: error.message || "Failed to flag project. Please try again." });
-      },
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to flag project. Please try again.");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dfur-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dfur-total-data"] });
+      // Re-run the per-record flag comment checks so button disables immediately
+      queryClient.invalidateQueries({ queryKey: ["user-flagged-dfur", user?.id] });
+      toast({ title: "Project Flagged", description: "DFUR project has been flagged for review." });
+      setSelectedProject(null);
+      setFlagComment("");
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Error Flagging Project", description: error.message || "Failed to flag project. Please try again." });
+    },
+  });
 
   const handleFlag = () => {
     if (!selectedProject) return;
@@ -447,6 +485,7 @@ export default function CheckerDFUR() {
                         project={project}
                         onView={setViewProject}
                         onFlag={setSelectedProject}
+                        isFlagDisabled={isFlagDisabled(project)}
                       />
                     ))
                   )}
@@ -510,7 +549,7 @@ export default function CheckerDFUR() {
                                   variant="outline"
                                   className="text-red-600 border-red-300 hover:bg-red-50"
                                   onClick={() => setSelectedProject(project)}
-                                  disabled={project.review_status === "flagged" || project.is_flagged === true}
+                                  disabled={isFlagDisabled(project)}
                                   data-testid={`button-flag-${project.id}`}
                                 >
                                   <Flag className="h-4 w-4 mr-1" />
