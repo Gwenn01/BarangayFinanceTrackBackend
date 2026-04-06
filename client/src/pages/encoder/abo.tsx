@@ -1,43 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import {
+  Plus, Edit, Trash2, ChevronLeft, ChevronRight,
+  FileSpreadsheet, Upload, Eye, Loader2,
+  Download, FileText, File,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+  Card, CardContent, CardHeader, CardTitle,
 } from "../../components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow, TableFooter,
 } from "../../components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription,
+  DialogHeader, DialogTitle,
 } from "../../components/ui/dialog";
+// DialogTitle is also used directly in FileViewerModal (already imported above)
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import {
-  BudgetEntryForm,
-  BudgetEntry,
-  InsertBudgetEntry,
+  BudgetEntryForm, BudgetEntry, InsertBudgetEntry,
 } from "../../components/budget-entry-form";
 import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 
@@ -47,7 +34,8 @@ import { format, isValid, parseISO } from "date-fns";
 import { EncoderLayout } from "../../components/encoder-layout";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "https://barangayfinancetrackbackenddeployment.onrender.com/api";
+  import.meta.env.VITE_API_URL ||
+  "https://barangayfinancetrackbackenddeployment.onrender.com/api";
 
 const ROWS_PER_PAGE = 10;
 
@@ -151,7 +139,10 @@ const formatCurrency = (value: string) => {
   })}`;
 };
 
-function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): string {
+function safeFormatDate(
+  dateStr: string | null | undefined,
+  fallback = "—"
+): string {
   if (!dateStr) return fallback;
   let date = parseISO(dateStr);
   if (!isValid(date)) date = new Date(dateStr);
@@ -159,23 +150,154 @@ function safeFormatDate(dateStr: string | null | undefined, fallback = "—"): s
   return format(date, "MMM dd, yyyy");
 }
 
+function getFileExtension(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.split(".").pop()?.toLowerCase() ?? "";
+  } catch {
+    return url.split(".").pop()?.toLowerCase() ?? "";
+  }
+}
+
+function getFileName(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "file");
+  } catch {
+    return url.split("/").pop() ?? "file";
+  }
+}
+
+/* -------------------- FILE VIEWER MODAL -------------------- */
+
+const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+const PDF_EXTS = ["pdf"];
+const OFFICE_EXTS = ["xlsx", "xls", "doc", "docx", "ppt", "pptx", "csv"];
+
+type FileViewerModalProps = {
+  open: boolean;
+  onClose: () => void;
+  fileUrl: string | null;
+  entryLabel?: string;
+};
+
+function FileViewerModal({ open, onClose, fileUrl, entryLabel }: FileViewerModalProps) {
+  if (!open || !fileUrl) return null;
+
+  const ext = getFileExtension(fileUrl);
+  const fileName = getFileName(fileUrl);
+  const isImage = IMAGE_EXTS.includes(ext);
+  const isPdf = PDF_EXTS.includes(ext);
+  const isOffice = OFFICE_EXTS.includes(ext);
+
+  const renderBody = () => {
+    if (isImage) {
+      return (
+        <div className="flex items-center justify-center w-full bg-muted/30 rounded-lg overflow-hidden min-h-[300px]">
+          <img
+            src={fileUrl}
+            alt={fileName}
+            className="max-w-full max-h-[65vh] object-contain rounded"
+          />
+        </div>
+      );
+    }
+
+    if (isPdf) {
+      return (
+        <div className="w-full rounded-lg overflow-hidden border" style={{ height: "80vh" }}>
+          <iframe
+            src={`${fileUrl}#toolbar=1&navpanes=0`}
+            title={fileName}
+            className="w-full h-full"
+            style={{ border: "none" }}
+          />
+        </div>
+      );
+    }
+
+    const icon = isOffice
+      ? <FileSpreadsheet className="h-7 w-7 text-green-700" />
+      : <File className="h-7 w-7 text-muted-foreground" />;
+
+    const bgClass = isOffice ? "bg-green-100" : "bg-muted";
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-12 px-4 bg-muted/30 rounded-lg min-h-[220px]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className={`h-14 w-14 rounded-xl ${bgClass} flex items-center justify-center`}>
+            {icon}
+          </div>
+          <div>
+            <p className="font-medium text-foreground truncate max-w-xs">{fileName}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              This file type cannot be previewed in the browser.
+            </p>
+          </div>
+        </div>
+        <a
+          href={fileUrl}
+          download={fileName}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-muted transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Download file
+        </a>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      {/* pr-10 reserves space for shadcn's built-in close button (top-right, ~2.5rem wide) */}
+      <DialogContent className="w-[calc(100%-2rem)] max-w-4xl mx-auto rounded-lg flex flex-col overflow-hidden p-0 [&>button]:top-3 [&>button]:right-3" style={{ maxHeight: "95vh" }}>
+        {/* Visually hidden title for accessibility */}
+        <DialogTitle className="sr-only">
+          {fileName} — Validation Document
+        </DialogTitle>
+
+        {/* Modal header */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b flex-shrink-0 pr-12">
+          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm leading-tight truncate">{fileName}</p>
+            {entryLabel && (
+              <p className="text-xs text-muted-foreground truncate">
+                Validation document — {entryLabel}
+              </p>
+            )}
+          </div>
+          <a
+            href={fileUrl}
+            download={fileName}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-input bg-background hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Download</span>
+          </a>
+        </div>
+
+        {/* Modal body */}
+        <div className="flex-1 overflow-auto p-5">
+          {renderBody()}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* -------------------- PAGINATION -------------------- */
 
 function Pagination({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
-  onPageChange,
+  currentPage, totalPages, totalItems, itemsPerPage, onPageChange,
 }: {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
+  currentPage: number; totalPages: number; totalItems: number;
+  itemsPerPage: number; onPageChange: (page: number) => void;
 }) {
   if (totalPages <= 1) return null;
-
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -203,46 +325,23 @@ function Pagination({
         <span className="font-medium">{totalItems}</span> entries
       </p>
       <div className="flex items-center gap-1 order-1 sm:order-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          aria-label="Previous page"
-        >
+        <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+          onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         {getPageNumbers().map((page, idx) =>
           page === "..." ? (
-            <span
-              key={`ellipsis-${idx}`}
-              className="h-8 w-8 flex items-center justify-center text-sm text-muted-foreground"
-            >
-              …
-            </span>
+            <span key={`ellipsis-${idx}`} className="h-8 w-8 flex items-center justify-center text-sm text-muted-foreground">…</span>
           ) : (
-            <Button
-              key={page}
-              variant={page === currentPage ? "default" : "outline"}
-              size="sm"
-              className="h-8 w-8 p-0 text-sm"
-              onClick={() => onPageChange(page as number)}
-              aria-label={`Page ${page}`}
-              aria-current={page === currentPage ? "page" : undefined}
-            >
+            <Button key={page} variant={page === currentPage ? "default" : "outline"} size="sm"
+              className="h-8 w-8 p-0 text-sm" onClick={() => onPageChange(page as number)}
+              aria-label={`Page ${page}`} aria-current={page === currentPage ? "page" : undefined}>
               {page}
             </Button>
           )
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          aria-label="Next page"
-        >
+        <Button variant="outline" size="sm" className="h-8 w-8 p-0"
+          onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -250,64 +349,130 @@ function Pagination({
   );
 }
 
+/* -------------------- ROW FILE ACTIONS -------------------- */
+
+function RowFileActions({
+  entryId, entryLabel, onUploadSuccess,
+}: {
+  entryId: string; entryLabel?: string; onUploadSuccess?: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isViewing, setIsViewing] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("data_type", "budget_entries");
+      const response = await fetch(`${API_BASE_URL}/upload-validation-docs/${entryId}`, {
+        method: "POST", body: formData,
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "Upload failed");
+      }
+      toast({ title: "File Uploaded", description: `"${file.name}" has been attached to this entry.` });
+      onUploadSuccess?.();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Upload Failed", description: error.message || "Could not upload file. Please try again." });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleView = async () => {
+    setIsViewing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-validation-docs/${entryId}/budget_entries`);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "No file found");
+      }
+      const data = await response.json();
+      const url: string = data.file_url;
+      if (!url) throw new Error("No file URL returned");
+      setFileUrl(url);
+      setViewerOpen(true);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "No File Found", description: error.message || "No validation document is attached to this entry." });
+    } finally {
+      setIsViewing(false);
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef} type="file" className="hidden"
+        accept=".xlsx,.xls,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.csv"
+        onChange={handleFileChange} data-testid={`file-input-${entryId}`}
+      />
+      <Button size="sm" variant="outline"
+        className="gap-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+        onClick={handleUploadClick} disabled={isUploading}
+        data-testid={`button-upload-doc-${entryId}`} title="Upload validation document">
+        {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+        <span className="hidden lg:inline">{isUploading ? "Uploading…" : "Upload"}</span>
+      </Button>
+      <Button size="sm" variant="outline"
+        className="gap-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+        onClick={handleView} disabled={isViewing}
+        data-testid={`button-view-doc-${entryId}`} title="View validation document">
+        {isViewing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+        <span className="hidden lg:inline">{isViewing ? "Loading…" : "View"}</span>
+      </Button>
+      <FileViewerModal
+        open={viewerOpen}
+        onClose={() => { setViewerOpen(false); setFileUrl(null); }}
+        fileUrl={fileUrl}
+        entryLabel={entryLabel}
+      />
+    </>
+  );
+}
+
 /* -------------------- MOBILE ENTRY CARD -------------------- */
 
-function EntryCard({
-  entry,
-  onEdit,
-  onDelete,
-}: {
-  entry: BudgetEntry;
-  onEdit: (e: BudgetEntry) => void;
-  onDelete: (e: BudgetEntry) => void;
+function EntryCard({ entry, onEdit, onDelete }: {
+  entry: BudgetEntry; onEdit: (e: BudgetEntry) => void; onDelete: (e: BudgetEntry) => void;
 }) {
   return (
-    <div
-      className="border rounded-lg p-4 space-y-3 bg-card"
-      data-testid={`row-entry-${entry.id}`}
-    >
+    <div className="border rounded-lg p-4 space-y-3 bg-card" data-testid={`row-entry-${entry.id}`}>
       <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-muted-foreground truncate">
-          {entry.transactionId}
-        </span>
-        <span className="font-bold text-sm text-chart-1 flex-shrink-0">
-          {formatCurrency(entry.amount)}
-        </span>
+        <span className="font-mono text-xs text-muted-foreground truncate">{entry.transactionId}</span>
+        <span className="font-bold text-sm text-chart-1 flex-shrink-0">{formatCurrency(entry.amount)}</span>
       </div>
       <div>
         <p className="font-medium text-sm leading-snug">{entry.category}</p>
-        {entry.subcategory && (
-          <p className="text-xs text-muted-foreground truncate">{entry.subcategory}</p>
-        )}
+        {entry.subcategory && <p className="text-xs text-muted-foreground truncate">{entry.subcategory}</p>}
       </div>
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
         <span className="truncate">{entry.payee}</span>
         <span className="flex-shrink-0">{safeFormatDate(entry.transactionDate)}</span>
       </div>
-      {entry.dvNumber && (
-        <p className="text-xs text-muted-foreground">DV: {entry.dvNumber}</p>
-      )}
+      {entry.dvNumber && <p className="text-xs text-muted-foreground">DV: {entry.dvNumber}</p>}
       <div className="flex gap-2 pt-1">
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 gap-1"
-          onClick={() => onEdit(entry)}
-          data-testid={`button-edit-entry-${entry.id}`}
-        >
-          <Edit className="h-3.5 w-3.5" />
-          Edit
+        <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => onEdit(entry)}
+          data-testid={`button-edit-entry-${entry.id}`}>
+          <Edit className="h-3.5 w-3.5" />Edit
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 gap-1 text-destructive hover:bg-destructive/10"
-          onClick={() => onDelete(entry)}
-          data-testid={`button-delete-entry-${entry.id}`}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete
+        <Button size="sm" variant="outline" className="flex-1 gap-1 text-destructive hover:bg-destructive/10"
+          onClick={() => onDelete(entry)} data-testid={`button-delete-entry-${entry.id}`}>
+          <Trash2 className="h-3.5 w-3.5" />Delete
         </Button>
+      </div>
+      <div className="flex gap-2">
+        <RowFileActions entryId={entry.id} entryLabel={entry.transactionId} />
       </div>
     </div>
   );
@@ -328,7 +493,6 @@ export default function ABO() {
   const currentUserId = 1;
   const allocationId = 1;
 
-  // Fetch budget entries
   const { data: entries = [], isLoading } = useQuery<BudgetEntry[]>({
     queryKey: ["budget-entries"],
     queryFn: async () => {
@@ -346,9 +510,7 @@ export default function ABO() {
     refetchOnWindowFocus: true,
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [entries.length]);
+  useEffect(() => { setCurrentPage(1); }, [entries.length]);
 
   const totalPages = Math.ceil(entries.length / ROWS_PER_PAGE);
   const paginatedEntries = entries.slice(
@@ -356,27 +518,21 @@ export default function ABO() {
     currentPage * ROWS_PER_PAGE
   );
 
-  // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: InsertBudgetEntry) => {
       const backendData = frontendToBackend(data, currentUserId, allocationId);
-      return apiFetch("/post-budget-entries", {
-        method: "POST",
-        body: JSON.stringify(backendData),
-      });
+      return apiFetch("/post-budget-entries", { method: "POST", body: JSON.stringify(backendData) });
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Added", description: "Budget entry has been successfully added to ABO." });
-      setDialogOpen(false);
-      setSelectedEntry(undefined);
+      setDialogOpen(false); setSelectedEntry(undefined);
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Adding Budget Entry", description: error.message || "Failed to add budget entry. Please try again." });
+      toast({ variant: "destructive", title: "Error Adding Budget Entry", description: error.message || "Failed to add budget entry." });
     },
   });
 
-  // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertBudgetEntry }) => {
       const backendData = frontendToBackend(data, currentUserId, allocationId, id);
@@ -385,15 +541,13 @@ export default function ABO() {
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Updated", description: "Budget entry has been successfully updated." });
-      setDialogOpen(false);
-      setSelectedEntry(undefined);
+      setDialogOpen(false); setSelectedEntry(undefined);
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Updating Budget Entry", description: error.message || "Failed to update budget entry. Please try again." });
+      toast({ variant: "destructive", title: "Error Updating Budget Entry", description: error.message || "Failed to update budget entry." });
     },
   });
 
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiFetch("/delete-budget-entries", { method: "DELETE", body: JSON.stringify({ id }) });
@@ -401,44 +555,23 @@ export default function ABO() {
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ["budget-entries"] });
       toast({ title: "Budget Entry Deleted", description: "Budget entry has been successfully deleted." });
-      setDeleteDialogOpen(false);
-      setEntryToDelete(undefined);
+      setDeleteDialogOpen(false); setEntryToDelete(undefined);
     },
     onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error Deleting Budget Entry", description: error.message || "Failed to delete budget entry. Please try again." });
+      toast({ variant: "destructive", title: "Error Deleting Budget Entry", description: error.message || "Failed to delete budget entry." });
     },
   });
 
   useEffect(() => {
-    if (!dialogOpen) {
-      setSelectedEntry(undefined);
-      setMode("create");
-    }
+    if (!dialogOpen) { setSelectedEntry(undefined); setMode("create"); }
   }, [dialogOpen]);
 
-  const handleCreate = () => {
-    setMode("create");
-    setSelectedEntry(undefined);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (entry: BudgetEntry) => {
-    setMode("edit");
-    setSelectedEntry(entry);
-    setDialogOpen(true);
-  };
-
-  const handleDelete = (entry: BudgetEntry) => {
-    setEntryToDelete(entry);
-    setDeleteDialogOpen(true);
-  };
-
+  const handleCreate = () => { setMode("create"); setSelectedEntry(undefined); setDialogOpen(true); };
+  const handleEdit = (entry: BudgetEntry) => { setMode("edit"); setSelectedEntry(entry); setDialogOpen(true); };
+  const handleDelete = (entry: BudgetEntry) => { setEntryToDelete(entry); setDeleteDialogOpen(true); };
   const handleSubmit = (data: InsertBudgetEntry) => {
-    if (mode === "create") {
-      createMutation.mutate(data);
-    } else if (mode === "edit" && selectedEntry) {
-      updateMutation.mutate({ id: selectedEntry.id, data });
-    }
+    if (mode === "create") createMutation.mutate(data);
+    else if (mode === "edit" && selectedEntry) updateMutation.mutate({ id: selectedEntry.id, data });
   };
 
   const totalAllocated = entries.reduce((sum, e) => {
@@ -460,26 +593,14 @@ export default function ABO() {
               Manage annual budget allocations and appropriations
             </p>
           </div>
-
-          {/* Header action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setUploadDialogOpen(true)}
-              data-testid="button-upload-excel"
-            >
+            <Button variant="outline" size="sm" className="gap-2"
+              onClick={() => setUploadDialogOpen(true)} data-testid="button-upload-excel">
               <FileSpreadsheet className="h-4 w-4 text-green-600" />
               <span className="hidden sm:inline">Upload Excel</span>
               <span className="sm:hidden">Upload</span>
             </Button>
-            <Button
-              size="sm"
-              className="gap-2"
-              onClick={handleCreate}
-              data-testid="button-add-entry"
-            >
+            <Button size="sm" className="gap-2" onClick={handleCreate} data-testid="button-add-entry">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Budget Entry</span>
               <span className="sm:hidden">Add</span>
@@ -495,10 +616,7 @@ export default function ABO() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p
-              className="text-2xl md:text-3xl font-bold text-chart-1"
-              data-testid="text-total-allocated"
-            >
+            <p className="text-2xl md:text-3xl font-bold text-chart-1" data-testid="text-total-allocated">
               {formatCurrency(totalAllocated.toString())}
             </p>
           </CardContent>
@@ -522,44 +640,26 @@ export default function ABO() {
             ) : entries.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground px-4">
                 <p className="text-base md:text-lg mb-2">No budget entries found</p>
-                <p className="text-sm">
-                  Click "Add Budget Entry" to create your first budget allocation
-                </p>
+                <p className="text-sm">Click "Add Budget Entry" to create your first budget allocation</p>
               </div>
             ) : (
               <>
-                {/* Mobile: Card List */}
+                {/* Mobile cards */}
                 <div className="md:hidden space-y-3 px-0 pt-2 pb-2">
                   {paginatedEntries.map((entry) => (
-                    <EntryCard
-                      key={entry.id}
-                      entry={entry}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                    />
+                    <EntryCard key={entry.id} entry={entry} onEdit={handleEdit} onDelete={handleDelete} />
                   ))}
                 </div>
-
-                {/* Mobile pagination */}
                 <div className="md:hidden">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={entries.length}
-                    itemsPerPage={ROWS_PER_PAGE}
-                    onPageChange={setCurrentPage}
-                  />
+                  <Pagination currentPage={currentPage} totalPages={totalPages}
+                    totalItems={entries.length} itemsPerPage={ROWS_PER_PAGE} onPageChange={setCurrentPage} />
                 </div>
-
-                {/* Mobile total footer */}
                 <div className="md:hidden border rounded-lg px-4 py-3 mt-3 bg-muted/40 flex justify-between items-center">
                   <span className="text-sm font-semibold">Total Budget Allocation</span>
-                  <span className="font-bold text-chart-1">
-                    {formatCurrency(totalAllocated.toString())}
-                  </span>
+                  <span className="font-bold text-chart-1">{formatCurrency(totalAllocated.toString())}</span>
                 </div>
 
-                {/* Desktop: Table */}
+                {/* Desktop table */}
                 <div className="hidden md:block border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -576,42 +676,34 @@ export default function ABO() {
                     <TableBody>
                       {paginatedEntries.map((entry) => (
                         <TableRow key={entry.id} data-testid={`row-entry-${entry.id}`}>
-                          <TableCell className="font-medium">
-                            {entry.transactionId}
-                          </TableCell>
+                          <TableCell className="font-medium">{entry.transactionId}</TableCell>
                           <TableCell>{safeFormatDate(entry.transactionDate)}</TableCell>
                           <TableCell className="max-w-xs">
                             <div className="font-medium">{entry.category}</div>
-                            <div className="text-sm text-muted-foreground truncate">
-                              {entry.subcategory}
-                            </div>
+                            <div className="text-sm text-muted-foreground truncate">{entry.subcategory}</div>
                           </TableCell>
                           <TableCell>{entry.payee}</TableCell>
                           <TableCell>{entry.dvNumber}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(entry.amount)}
-                          </TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(entry.amount)}</TableCell>
                           <TableCell className="text-center">
-                            <div className="flex gap-2 justify-center">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEdit(entry)}
-                                data-testid={`button-edit-entry-${entry.id}`}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Edit
+                            <div className="flex gap-1.5 justify-center flex-wrap">
+                              <Button size="sm" variant="outline" onClick={() => handleEdit(entry)}
+                                data-testid={`button-edit-entry-${entry.id}`}>
+                                <Edit className="h-4 w-4 mr-1" />Edit
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
+                              <Button size="sm" variant="outline"
                                 className="text-destructive hover:bg-destructive/10"
                                 onClick={() => handleDelete(entry)}
-                                data-testid={`button-delete-entry-${entry.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
+                                data-testid={`button-delete-entry-${entry.id}`}>
+                                <Trash2 className="h-4 w-4 mr-1" />Delete
                               </Button>
+                              <RowFileActions
+                                entryId={entry.id}
+                                entryLabel={entry.transactionId}
+                                onUploadSuccess={() =>
+                                  queryClient.refetchQueries({ queryKey: ["budget-entries"] })
+                                }
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
@@ -629,29 +721,16 @@ export default function ABO() {
                       </TableRow>
                     </TableFooter>
                   </Table>
-
-                  {/* Desktop pagination */}
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={entries.length}
-                    itemsPerPage={ROWS_PER_PAGE}
-                    onPageChange={setCurrentPage}
-                  />
+                  <Pagination currentPage={currentPage} totalPages={totalPages}
+                    totalItems={entries.length} itemsPerPage={ROWS_PER_PAGE} onPageChange={setCurrentPage} />
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Excel Upload Dialog */}
-        <AboExcelUploadDialog
-          open={uploadDialogOpen}
-          onOpenChange={setUploadDialogOpen}
-          createdBy={currentUserId}
-        />
+        <AboExcelUploadDialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen} createdBy={currentUserId} />
 
-        {/* Add/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="w-[calc(100%-2rem)] max-w-[600px] mx-auto rounded-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -665,43 +744,30 @@ export default function ABO() {
               </DialogDescription>
             </DialogHeader>
             <BudgetEntryForm
-              mode={mode}
-              entry={selectedEntry}
-              onSubmit={handleSubmit}
+              mode={mode} entry={selectedEntry} onSubmit={handleSubmit}
               isPending={createMutation.isPending || updateMutation.isPending}
               onCancel={() => setDialogOpen(false)}
             />
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this budget entry? This action
-                cannot be undone.
+                Are you sure you want to delete this budget entry? This action cannot be undone.
                 {entryToDelete && (
                   <div className="mt-4 p-3 bg-muted rounded-md space-y-1 text-left">
-                    <div>
-                      <strong>Transaction ID:</strong> {entryToDelete.transactionId}
-                    </div>
-                    <div>
-                      <strong>Amount:</strong> {formatCurrency(entryToDelete.amount)}
-                    </div>
-                    <div>
-                      <strong>Payee:</strong> {entryToDelete.payee}
-                    </div>
+                    <div><strong>Transaction ID:</strong> {entryToDelete.transactionId}</div>
+                    <div><strong>Amount:</strong> {formatCurrency(entryToDelete.amount)}</div>
+                    <div><strong>Payee:</strong> {entryToDelete.payee}</div>
                   </div>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-              <AlertDialogCancel
-                data-testid="button-cancel-delete"
-                className="w-full sm:w-auto"
-              >
+              <AlertDialogCancel data-testid="button-cancel-delete" className="w-full sm:w-auto">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
