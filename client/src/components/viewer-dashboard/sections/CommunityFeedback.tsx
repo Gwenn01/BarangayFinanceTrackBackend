@@ -39,7 +39,9 @@ export default function CommunityFeedback({
         email: commentEmail,
         comment: commentText,
       });
-      alert("Thank you for your feedback! Your comment has been submitted for review.");
+      alert(
+        "Thank you for your feedback! Your comment has been submitted for review.",
+      );
       setCommentName("");
       setCommentEmail("");
       setCommentText("");
@@ -137,8 +139,8 @@ export default function CommunityFeedback({
               )}
             </button>
             <p className="text-xs text-slate-500 text-center leading-relaxed">
-              All comments are reviewed by our admin team. Contact information is kept
-              confidential.
+              All comments are reviewed by our admin team. Contact information
+              is kept confidential.
             </p>
           </form>
         </div>
@@ -155,9 +157,10 @@ export default function CommunityFeedback({
                   Why Your Feedback Matters
                 </h4>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                  Your comments help us understand community needs and improve our
-                  transparency initiatives. Every piece of feedback is carefully reviewed
-                  and considered in our decision-making process.
+                  Your comments help us understand community needs and improve
+                  our transparency initiatives. Every piece of feedback is
+                  carefully reviewed and considered in our decision-making
+                  process.
                 </p>
               </div>
             </div>
@@ -199,8 +202,9 @@ export default function CommunityFeedback({
                   Response Time
                 </h4>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                  We strive to acknowledge all feedback promptly. Complex inquiries may
-                  require additional time for thorough investigation and response.
+                  We strive to acknowledge all feedback promptly. Complex
+                  inquiries may require additional time for thorough
+                  investigation and response.
                 </p>
               </div>
             </div>
@@ -229,7 +233,9 @@ export default function CommunityFeedback({
             <div className="flex items-center justify-center py-10 sm:py-12">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                <span className="text-slate-500 text-sm">Loading comments...</span>
+                <span className="text-slate-500 text-sm">
+                  Loading comments...
+                </span>
               </div>
             </div>
           ) : comments && comments.length > 0 ? (
@@ -237,28 +243,41 @@ export default function CommunityFeedback({
               {comments.map((comment) => (
                 <div
                   key={comment.id}
-                  className="p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-white rounded-xl sm:rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 w-full h-auto text-wrap"
+                  className="p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-white rounded-xl sm:rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 w-full h-auto"
                 >
-                  <div className="flex items-start gap-2.5 sm:gap-3 mb-2 sm:mb-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white font-bold shrink-0 text-xs sm:text-base">
-                      {comment.name.charAt(0).toUpperCase()}
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    {/* Left: Avatar + Name */}
+                    <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white font-bold shrink-0 text-xs sm:text-base">
+                        {comment.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-slate-900 text-sm sm:text-base truncate leading-tight">
+                          {comment.name}
+                        </h4>
+
+                        {comment.email && (
+                          <p className="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5">
+                            {comment.email}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-slate-900 text-sm sm:text-base truncate leading-tight">
-                        {comment.name}
-                      </h4>
-                      {comment.email && (
-                        <p className="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5">
-                          {comment.email}
-                        </p>
-                      )}
-                    </div>
+
+                    {/* Right: Created Date */}
+                    {comment.created_at && (
+                      <div className="text-[10px] sm:text-xs text-slate-400 whitespace-nowrap">
+                        {new Date(comment.created_at).toLocaleString()}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex min-w-0">
-                    <p className="w-full break-words whitespace-normal text-xs sm:text-base text-slate-700">
-                      {comment.comment}
-                    </p>
-                  </div>
+
+                  {/* Comment Content */}
+                  <p className="text-sm sm:text-base text-slate-700 leading-relaxed break-words">
+                    {comment.comment}
+                  </p>
                 </div>
               ))}
             </div>
