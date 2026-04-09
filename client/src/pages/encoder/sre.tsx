@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Download,
@@ -16,10 +16,19 @@ import {
   MessageSquare,
   User,
   Clock,
+  File,
+  FileText,
+  Loader2,
+  Upload,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { EncoderLayout } from "../../components/encoder-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import {
@@ -136,6 +145,9 @@ export type Disbursement = {
 };
 
 type ViewType = "collection" | "disbursement";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://barangayfinancetrackbackenddeployment.onrender.com/api";
 
 /* -------------------- CONVERTERS -------------------- */
 
@@ -158,7 +170,7 @@ function backendCollectionToFrontend(backend: BackendCollection): Collection {
 }
 
 function backendDisbursementToFrontend(
-  backend: BackendDisbursement
+  backend: BackendDisbursement,
 ): Disbursement {
   return {
     id: backend.id.toString(),
@@ -268,7 +280,7 @@ function FlagCommentsDialog({
                     {comment.created_at
                       ? format(
                           new Date(comment.created_at),
-                          "MMM dd, yyyy hh:mm a"
+                          "MMM dd, yyyy hh:mm a",
                         )
                       : "—"}
                   </span>
@@ -277,6 +289,162 @@ function FlagCommentsDialog({
             ))
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+/* -------------------- FILE VIEWER MODAL -------------------- */
+function getFileExtension(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.split(".").pop()?.toLowerCase() ?? "";
+  } catch {
+    return url.split(".").pop()?.toLowerCase() ?? "";
+  }
+}
+
+function getFileName(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "file");
+  } catch {
+    return url.split("/").pop() ?? "file";
+  }
+}
+const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+const PDF_EXTS = ["pdf"];
+const OFFICE_EXTS = ["xlsx", "xls", "doc", "docx", "ppt", "pptx", "csv"];
+
+type FileViewerModalProps = {
+  open: boolean;
+  onClose: () => void;
+  fileUrl: string | null;
+  entryLabel?: string;
+};
+
+function FileViewerModal({
+  open,
+  onClose,
+  fileUrl,
+  entryLabel,
+}: FileViewerModalProps) {
+  if (!open || !fileUrl) return null;
+
+  const ext = getFileExtension(fileUrl);
+  const fileName = getFileName(fileUrl);
+  const isImage = IMAGE_EXTS.includes(ext);
+  const isPdf = PDF_EXTS.includes(ext);
+  const isOffice = OFFICE_EXTS.includes(ext);
+
+  const renderBody = () => {
+    if (isImage) {
+      return (
+        <div className="flex items-center justify-center w-full bg-muted/30 rounded-lg overflow-hidden min-h-[300px]">
+          <img
+            src={fileUrl}
+            alt={fileName}
+            className="max-w-full max-h-[65vh] object-contain rounded"
+          />
+        </div>
+      );
+    }
+
+    if (isPdf) {
+      return (
+        <div
+          className="w-full rounded-lg overflow-hidden border"
+          style={{ height: "80vh" }}
+        >
+          <iframe
+            src={`${fileUrl}#toolbar=1&navpanes=0`}
+            title={fileName}
+            className="w-full h-full"
+            style={{ border: "none" }}
+          />
+        </div>
+      );
+    }
+
+    const icon = isOffice ? (
+      <FileSpreadsheet className="h-7 w-7 text-green-700" />
+    ) : (
+      <File className="h-7 w-7 text-muted-foreground" />
+    );
+
+    const bgClass = isOffice ? "bg-green-100" : "bg-muted";
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-12 px-4 bg-muted/30 rounded-lg min-h-[220px]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div
+            className={`h-14 w-14 rounded-xl ${bgClass} flex items-center justify-center`}
+          >
+            {icon}
+          </div>
+          <div>
+            <p className="font-medium text-foreground truncate max-w-xs">
+              {fileName}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              This file type cannot be previewed in the browser.
+            </p>
+          </div>
+        </div>
+        <a
+          href={fileUrl}
+          download={fileName}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-muted transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Download file
+        </a>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent
+        className="w-[calc(100%-2rem)] max-w-4xl mx-auto rounded-lg flex flex-col overflow-hidden p-0 [&>button]:top-3 [&>button]:right-3"
+        style={{ maxHeight: "95vh" }}
+      >
+        <DialogTitle className="sr-only">
+          {fileName} — Validation Document
+        </DialogTitle>
+
+        {/* Modal header */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b flex-shrink-0 pr-12">
+          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm leading-tight truncate">
+              {fileName}
+            </p>
+            {entryLabel && (
+              <p className="text-xs text-muted-foreground truncate">
+                Validation document — {entryLabel}
+              </p>
+            )}
+          </div>
+          <a
+            href={fileUrl}
+            download={fileName}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-input bg-background hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Download</span>
+          </a>
+        </div>
+
+        {/* Modal body */}
+        <div className="flex-1 overflow-auto p-5">{renderBody()}</div>
       </DialogContent>
     </Dialog>
   );
@@ -325,8 +493,11 @@ function Pagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-3 border-t">
       <p className="text-xs text-muted-foreground order-2 sm:order-1">
-        Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
-        <span className="font-medium">{totalItems}</span> records
+        Showing{" "}
+        <span className="font-medium">
+          {startItem}–{endItem}
+        </span>{" "}
+        of <span className="font-medium">{totalItems}</span> records
       </p>
       <div className="flex items-center gap-1 order-1 sm:order-2">
         <Button
@@ -359,7 +530,7 @@ function Pagination({
             >
               {page}
             </Button>
-          )
+          ),
         )}
 
         <Button
@@ -416,10 +587,7 @@ function CollectionCard({
       </p>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-        <span
-          className="truncate"
-          data-testid={`text-payor-${collection.id}`}
-        >
+        <span className="truncate" data-testid={`text-payor-${collection.id}`}>
           {collection.payor}
         </span>
         <span
@@ -476,6 +644,229 @@ function CollectionCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+/* -------------------- PAGE-LEVEL FILE ACTIONS -------------------- */
+
+function PageFileActions({
+  pageId,
+  label,
+  disabled: externalDisabled,
+}: {
+  pageId: string;
+  label?: string;
+  disabled?: boolean;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [isViewing, setIsViewing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [hasFile, setHasFile] = useState(false);
+
+  const { toast } = useToast();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  //  UPLOAD
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("data_type", "collections");
+
+      const response = await fetch(
+        `${API_BASE_URL}/upload-validation-docs/${pageId}`,
+        { method: "POST", body: formData },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "Upload failed");
+      }
+
+      setHasFile(true);
+
+      toast({
+        title: "File Uploaded",
+        description: `"${file.name}" has been attached.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description:
+          error.message || "Could not upload file. Please try again.",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  //  VIEW
+  const handleView = async () => {
+    setIsViewing(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/get-validation-docs/${pageId}/collections`,
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "No file found");
+      }
+
+      const data = await response.json();
+      const url: string = data.file_url;
+
+      if (!url) throw new Error("No file URL returned");
+
+      setFileUrl(url);
+      setViewerOpen(true);
+      setHasFile(true);
+    } catch (error: any) {
+      setHasFile(false);
+
+      toast({
+        variant: "destructive",
+        title: "No File Found",
+        description: error.message || "No document is attached to this record.",
+      });
+    } finally {
+      setIsViewing(false);
+    }
+  };
+
+  // DELETE (NEW)
+  const handleDelete = async () => {
+    const confirmDelete = confirm(
+      "Are you sure you want to remove this document?",
+    );
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/delete-validation-docs/${pageId}/budget_entries`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "Delete failed");
+      }
+
+      setHasFile(false);
+      setFileUrl(null);
+      setViewerOpen(false);
+
+      toast({
+        title: "File Removed",
+        description: "The document has been deleted.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description:
+          error.message || "Could not delete file. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      {/* FILE INPUT */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".xlsx,.xls,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.csv"
+        onChange={handleFileChange}
+        data-testid="file-input-abo-page"
+      />
+
+      {/* UPLOAD */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+        onClick={handleUploadClick}
+        disabled={isUploading || externalDisabled}
+        title="Upload document (PDF, DOCX, Images, Excel)"
+      >
+        {isUploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">
+          {isUploading ? "Uploading…" : "Upload Document"}
+        </span>
+      </Button>
+
+      {/* VIEW */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+        onClick={handleView}
+        disabled={isViewing || externalDisabled}
+        title="View uploaded document"
+      >
+        {isViewing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Eye className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">
+          {isViewing ? "Loading…" : "View Document"}
+        </span>
+      </Button>
+
+      {/* DELETE (only show if file exists) */}
+      {hasFile && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+          onClick={handleDelete}
+          disabled={isDeleting || externalDisabled}
+          title="Remove uploaded document"
+        >
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">
+            {isDeleting ? "Removing…" : "Remove"}
+          </span>
+        </Button>
+      )}
+
+      {/* VIEWER MODAL */}
+      <FileViewerModal
+        open={viewerOpen}
+        onClose={() => {
+          setViewerOpen(false);
+          setFileUrl(null);
+        }}
+        fileUrl={fileUrl}
+        entryLabel={label}
+      />
+    </>
   );
 }
 
@@ -591,14 +982,14 @@ export default function SRE() {
   const { user } = useAuth();
   const currentDate = new Date();
   const [startDate, setStartDate] = useState(
-    format(startOfMonth(currentDate), "yyyy-MM-dd")
+    format(startOfMonth(currentDate), "yyyy-MM-dd"),
   );
   const [endDate, setEndDate] = useState(
-    format(endOfMonth(currentDate), "yyyy-MM-dd")
+    format(endOfMonth(currentDate), "yyyy-MM-dd"),
   );
   const [activeView, setActiveView] = useState<ViewType>("collection");
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(
-    null
+    null,
   );
   const [deleteDisbursementId, setDeleteDisbursementId] = useState<
     string | null
@@ -621,7 +1012,7 @@ export default function SRE() {
   const openFlagDialog = (
     recordId: string,
     flagType: "collection" | "disbursement",
-    transactionId: string
+    transactionId: string,
   ) => {
     setFlagDialog({ open: true, recordId, flagType, transactionId });
   };
@@ -633,7 +1024,7 @@ export default function SRE() {
     queryKey: ["collections"],
     queryFn: async () => {
       const result = await apiCall<{ data: BackendCollection[] }>(
-        api.collections.getAll
+        api.collections.getAll,
       );
       if (result.error) throw new Error(result.error);
       const data = result.data?.data || result.data || [];
@@ -652,12 +1043,11 @@ export default function SRE() {
       queryKey: ["disbursements"],
       queryFn: async () => {
         const result = await apiCall<{ data: BackendDisbursement[] }>(
-          api.disbursements.getAll
+          api.disbursements.getAll,
         );
         if (result.error) throw new Error(result.error);
         const data = result.data?.data || result.data || [];
-        if (Array.isArray(data))
-          return data.map(backendDisbursementToFrontend);
+        if (Array.isArray(data)) return data.map(backendDisbursementToFrontend);
         return [];
       },
       staleTime: 0,
@@ -665,6 +1055,8 @@ export default function SRE() {
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     });
+
+  const collectionPageId = collections[0]?.id ?? "";
 
   /* Delete collection */
   const deleteCollection = useMutation({
@@ -678,7 +1070,7 @@ export default function SRE() {
     },
     onSuccess: (deletedId) => {
       queryClient.setQueryData(["collections"], (old: Collection[] = []) =>
-        old.filter((item) => item.id !== deletedId)
+        old.filter((item) => item.id !== deletedId),
       );
       queryClient.invalidateQueries({ queryKey: ["collections"] });
       toast({
@@ -707,10 +1099,8 @@ export default function SRE() {
       return id;
     },
     onSuccess: (deletedId) => {
-      queryClient.setQueryData(
-        ["disbursements"],
-        (old: Disbursement[] = []) =>
-          old.filter((item) => item.id !== deletedId)
+      queryClient.setQueryData(["disbursements"], (old: Disbursement[] = []) =>
+        old.filter((item) => item.id !== deletedId),
       );
       queryClient.invalidateQueries({ queryKey: ["disbursements"] });
       toast({
@@ -741,19 +1131,19 @@ export default function SRE() {
 
   /* Pagination derived values */
   const collectionTotalPages = Math.ceil(
-    filteredCollections.length / ROWS_PER_PAGE
+    filteredCollections.length / ROWS_PER_PAGE,
   );
   const paginatedCollections = filteredCollections.slice(
     (collectionPage - 1) * ROWS_PER_PAGE,
-    collectionPage * ROWS_PER_PAGE
+    collectionPage * ROWS_PER_PAGE,
   );
 
   const disbursementTotalPages = Math.ceil(
-    filteredDisbursements.length / ROWS_PER_PAGE
+    filteredDisbursements.length / ROWS_PER_PAGE,
   );
   const paginatedDisbursements = filteredDisbursements.slice(
     (disbursementPage - 1) * ROWS_PER_PAGE,
-    disbursementPage * ROWS_PER_PAGE
+    disbursementPage * ROWS_PER_PAGE,
   );
 
   /* Reset pages when date filter changes */
@@ -777,41 +1167,47 @@ export default function SRE() {
 
   const totalReceipts = filteredCollections.reduce(
     (sum, c) => sum + parseFloat(c.amount),
-    0
+    0,
   );
   const totalExpenditures = filteredDisbursements.reduce(
     (sum, d) => sum + parseFloat(d.amount),
-    0
+    0,
   );
   const netBalance = totalReceipts - totalExpenditures;
 
-const handleExport = async () => {
-  try {
-    setIsExporting(true);
-    await exportSREToExcel({
-      startDate,
-      endDate,
-      activeView,                  // ← add this
-      collections: filteredCollections,
-      disbursements: filteredDisbursements,
-      totalReceipts,
-      totalExpenditures,
-      // netBalance no longer needed, remove it
-    });
-    toast({ title: "Export Successful", description: "SRE Excel report downloaded." });
-  } catch (error) {
-    console.error("Error exporting Excel:", error);
-    toast({ variant: "destructive", title: "Export Failed", description: "Please try again." });
-  } finally {
-    setIsExporting(false);
-  }
-};
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportSREToExcel({
+        startDate,
+        endDate,
+        activeView, // ← add this
+        collections: filteredCollections,
+        disbursements: filteredDisbursements,
+        totalReceipts,
+        totalExpenditures,
+        // netBalance no longer needed, remove it
+      });
+      toast({
+        title: "Export Successful",
+        description: "SRE Excel report downloaded.",
+      });
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "Please try again.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const skeletonRows = [1, 2, 3, 4];
 
   return (
     <EncoderLayout>
       <div className="p-4 md:p-8 space-y-4 md:space-y-6">
-
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -953,23 +1349,52 @@ const handleExport = async () => {
           </Card>
         </div>
 
-        {/* Add Form Button + Upload Excel */}
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setIsUploadDialogOpen(true)}
-            data-testid="button-upload-excel"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-green-600" />
-            <span className="hidden sm:inline">Upload Excel</span>
-            <span className="sm:hidden">Upload</span>
-          </Button>
-          {activeView === "collection" ? (
-            <CollectionForm />
-          ) : (
-            <DisbursementForm />
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* LEFT SIDE (optional title or empty) */}
+          <div />
+
+          {/* RIGHT SIDE ACTIONS */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/*  DATA ACTION */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 hidden sm:inline">
+                Insert Data
+              </span>
+
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => setIsUploadDialogOpen(true)}
+                title="Upload Excel file (.xlsx, .csv) to import data"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                <span className="hidden sm:inline">Upload Excel</span>
+                <span className="sm:hidden">Excel</span>
+              </Button>
+            </div>
+
+            {/*  DOCUMENT ACTION */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 hidden sm:inline">
+                Document
+              </span>
+
+              <PageFileActions
+                pageId={collectionPageId}
+                label="Collection Document"
+                disabled={collections.length === 0}
+              />
+            </div>
+
+            {/*  FORM ACTION */}
+            <div className="flex items-center gap-2">
+              {activeView === "collection" ? (
+                <CollectionForm />
+              ) : (
+                <DisbursementForm />
+              )}
+            </div>
+          </div>
         </div>
 
         <AboExcelUploadDialog
@@ -1082,7 +1507,7 @@ const handleExport = async () => {
                               >
                                 {format(
                                   new Date(collection.transactionDate),
-                                  "MMM dd, yyyy"
+                                  "MMM dd, yyyy",
                                 )}
                               </TableCell>
                               <TableCell
@@ -1129,7 +1554,7 @@ const handleExport = async () => {
                                       openFlagDialog(
                                         collection.id,
                                         "collection",
-                                        collection.transactionId
+                                        collection.transactionId,
                                       )
                                     }
                                     data-testid={`button-view-flags-collection-${collection.id}`}
@@ -1300,7 +1725,7 @@ const handleExport = async () => {
                               >
                                 {format(
                                   new Date(disbursement.transactionDate),
-                                  "MMM dd, yyyy"
+                                  "MMM dd, yyyy",
                                 )}
                               </TableCell>
                               <TableCell
@@ -1336,7 +1761,7 @@ const handleExport = async () => {
                                 data-testid={`text-amount-${disbursement.id}`}
                               >
                                 {formatCurrency(
-                                  parseFloat(disbursement.amount)
+                                  parseFloat(disbursement.amount),
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
@@ -1349,7 +1774,7 @@ const handleExport = async () => {
                                       openFlagDialog(
                                         disbursement.id,
                                         "disbursement",
-                                        disbursement.transactionId
+                                        disbursement.transactionId,
                                       )
                                     }
                                     data-testid={`button-view-flags-disbursement-${disbursement.id}`}
@@ -1424,7 +1849,9 @@ const handleExport = async () => {
         >
           <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto rounded-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Collection Transaction?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Delete Collection Transaction?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the
                 collection transaction.
@@ -1490,9 +1917,7 @@ const handleExport = async () => {
         {/* Flag Comments Dialog */}
         <FlagCommentsDialog
           open={flagDialog.open}
-          onOpenChange={(open) =>
-            setFlagDialog((prev) => ({ ...prev, open }))
-          }
+          onOpenChange={(open) => setFlagDialog((prev) => ({ ...prev, open }))}
           recordId={flagDialog.recordId}
           flagType={flagDialog.flagType}
           transactionId={flagDialog.transactionId}
