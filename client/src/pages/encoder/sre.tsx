@@ -229,6 +229,26 @@ function FlagCommentsDialog({
     enabled: open && !!recordId,
     staleTime: 0,
   });
+  // formater usename
+  function formatUsername(username?: string) {
+    const name = username?.toLowerCase() || "";
+
+    //  specific first
+    if (name.includes("approver1")) return "Brgy. Captain 1";
+    if (name.includes("approver2")) return "Brgy. Captain 2";
+
+    if (name.includes("newapprover")) return "New Brgy. Captain";
+
+    // general approver (last)
+    if (name.includes("approver")) return "Brgy. Captain";
+
+    if (name.includes("bookkeeper") || name.includes("checker"))
+      return "Bookkeeper";
+
+    if (name.includes("reviewer")) return "Brgy. Council";
+
+    return username;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -273,7 +293,9 @@ function FlagCommentsDialog({
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
                   <span className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
-                    <span className="font-medium">{comment.username}</span>
+                    <span className="font-medium">
+                      {formatUsername(comment.username)}
+                    </span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />

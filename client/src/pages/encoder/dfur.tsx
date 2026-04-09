@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus,
@@ -15,7 +15,11 @@ import {
   MessageSquare,
   User,
   Clock,
-  Download
+  Download,
+  File,
+  FileText,
+  Loader2,
+  Upload,
 } from "lucide-react";
 import { EncoderLayout } from "../../components/encoder-layout";
 import { Button } from "../../components/ui/button";
@@ -78,7 +82,9 @@ import { format } from "date-fns";
 import { api, apiCall } from "../../utils/api";
 import { AboExcelUploadDialog } from "../../components/excel-upload-dialog";
 import { exportDFURToExcel } from "../../utils/exportDFURToExcel";
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://barangayfinancetrackbackenddeployment.onrender.com/api";
 /* -------------------- TYPES -------------------- */
 
 export type DfurProject = {
@@ -133,7 +139,13 @@ const insertDfurProjectSchema = z.object({
   total_cost_approved: z.number().min(0, "Invalid amount"),
   date_started: z.string(),
   target_completion_date: z.string(),
-  status: z.enum(["Planned", "In Progress", "Completed", "On Hold", "Cancelled"]),
+  status: z.enum([
+    "Planned",
+    "In Progress",
+    "Completed",
+    "On Hold",
+    "Cancelled",
+  ]),
   total_cost_incurred: z.number().min(0, "Invalid amount"),
   no_extensions: z.number().min(0),
   remarks: z.string().optional(),
@@ -149,18 +161,30 @@ const natureOfCollectionOptions = [
   "Aquatic Resources",
 ];
 
-const statusOptions = ["Planned", "In Progress", "Completed", "On Hold", "Cancelled"];
+const statusOptions = [
+  "Planned",
+  "In Progress",
+  "Completed",
+  "On Hold",
+  "Cancelled",
+];
 
 /* -------------------- HELPERS -------------------- */
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "Completed":   return "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20";
-    case "In Progress": return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
-    case "Planned":     return "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20";
-    case "On Hold":     return "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20";
-    case "Cancelled":   return "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20";
-    default:            return "bg-muted";
+    case "Completed":
+      return "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20";
+    case "In Progress":
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
+    case "Planned":
+      return "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20";
+    case "On Hold":
+      return "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20";
+    case "Cancelled":
+      return "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20";
+    default:
+      return "bg-muted";
   }
 };
 
@@ -220,7 +244,10 @@ function FlagCommentsDialog({
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
+                <div
+                  key={i}
+                  className="h-20 bg-muted rounded-lg animate-pulse"
+                />
               ))}
             </div>
           ) : comments.length === 0 ? (
@@ -240,12 +267,24 @@ function FlagCommentsDialog({
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-red-200 dark:border-red-900">
                   <span className="flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
-                    <span className="font-medium">{comment.username}</span>
+                    <span className="font-medium">
+                      {comment.username?.toLowerCase().includes("bookkeeper") ||
+                      comment.username?.toLowerCase().includes("checker")
+                        ? "Bookkeeper"
+                        : comment.username?.toLowerCase().includes("approver")
+                          ? "Brgy. Captain"
+                          : comment.username?.toLowerCase().includes("reviewer")
+                            ? "Brgy. Council"
+                            : comment.username}
+                    </span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
                     {comment.created_at
-                      ? format(new Date(comment.created_at), "MMM dd, yyyy hh:mm a")
+                      ? format(
+                          new Date(comment.created_at),
+                          "MMM dd, yyyy hh:mm a",
+                        )
                       : "—"}
                   </span>
                 </div>
@@ -253,6 +292,162 @@ function FlagCommentsDialog({
             ))
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+/* -------------------- FILE VIEWER MODAL -------------------- */
+function getFileExtension(url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    return pathname.split(".").pop()?.toLowerCase() ?? "";
+  } catch {
+    return url.split(".").pop()?.toLowerCase() ?? "";
+  }
+}
+
+function getFileName(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "file");
+  } catch {
+    return url.split("/").pop() ?? "file";
+  }
+}
+const IMAGE_EXTS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+const PDF_EXTS = ["pdf"];
+const OFFICE_EXTS = ["xlsx", "xls", "doc", "docx", "ppt", "pptx", "csv"];
+
+type FileViewerModalProps = {
+  open: boolean;
+  onClose: () => void;
+  fileUrl: string | null;
+  entryLabel?: string;
+};
+
+function FileViewerModal({
+  open,
+  onClose,
+  fileUrl,
+  entryLabel,
+}: FileViewerModalProps) {
+  if (!open || !fileUrl) return null;
+
+  const ext = getFileExtension(fileUrl);
+  const fileName = getFileName(fileUrl);
+  const isImage = IMAGE_EXTS.includes(ext);
+  const isPdf = PDF_EXTS.includes(ext);
+  const isOffice = OFFICE_EXTS.includes(ext);
+
+  const renderBody = () => {
+    if (isImage) {
+      return (
+        <div className="flex items-center justify-center w-full bg-muted/30 rounded-lg overflow-hidden min-h-[300px]">
+          <img
+            src={fileUrl}
+            alt={fileName}
+            className="max-w-full max-h-[65vh] object-contain rounded"
+          />
+        </div>
+      );
+    }
+
+    if (isPdf) {
+      return (
+        <div
+          className="w-full rounded-lg overflow-hidden border"
+          style={{ height: "80vh" }}
+        >
+          <iframe
+            src={`${fileUrl}#toolbar=1&navpanes=0`}
+            title={fileName}
+            className="w-full h-full"
+            style={{ border: "none" }}
+          />
+        </div>
+      );
+    }
+
+    const icon = isOffice ? (
+      <FileSpreadsheet className="h-7 w-7 text-green-700" />
+    ) : (
+      <File className="h-7 w-7 text-muted-foreground" />
+    );
+
+    const bgClass = isOffice ? "bg-green-100" : "bg-muted";
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-12 px-4 bg-muted/30 rounded-lg min-h-[220px]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div
+            className={`h-14 w-14 rounded-xl ${bgClass} flex items-center justify-center`}
+          >
+            {icon}
+          </div>
+          <div>
+            <p className="font-medium text-foreground truncate max-w-xs">
+              {fileName}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              This file type cannot be previewed in the browser.
+            </p>
+          </div>
+        </div>
+        <a
+          href={fileUrl}
+          download={fileName}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border border-input bg-background hover:bg-muted transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Download file
+        </a>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent
+        className="w-[calc(100%-2rem)] max-w-4xl mx-auto rounded-lg flex flex-col overflow-hidden p-0 [&>button]:top-3 [&>button]:right-3"
+        style={{ maxHeight: "95vh" }}
+      >
+        <DialogTitle className="sr-only">
+          {fileName} — Validation Document
+        </DialogTitle>
+
+        {/* Modal header */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b flex-shrink-0 pr-12">
+          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm leading-tight truncate">
+              {fileName}
+            </p>
+            {entryLabel && (
+              <p className="text-xs text-muted-foreground truncate">
+                Validation document — {entryLabel}
+              </p>
+            )}
+          </div>
+          <a
+            href={fileUrl}
+            download={fileName}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-input bg-background hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Download</span>
+          </a>
+        </div>
+
+        {/* Modal body */}
+        <div className="flex-1 overflow-auto p-5">{renderBody()}</div>
       </DialogContent>
     </Dialog>
   );
@@ -301,8 +496,11 @@ function Pagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-0 py-3 border-t">
       <p className="text-xs text-muted-foreground order-2 sm:order-1">
-        Showing <span className="font-medium">{startItem}–{endItem}</span> of{" "}
-        <span className="font-medium">{totalItems}</span> projects
+        Showing{" "}
+        <span className="font-medium">
+          {startItem}–{endItem}
+        </span>{" "}
+        of <span className="font-medium">{totalItems}</span> projects
       </p>
       <div className="flex items-center gap-1 order-1 sm:order-2">
         <Button
@@ -335,7 +533,7 @@ function Pagination({
             >
               {page}
             </Button>
-          )
+          ),
         )}
 
         <Button
@@ -350,6 +548,229 @@ function Pagination({
         </Button>
       </div>
     </div>
+  );
+}
+
+/* -------------------- PAGE-LEVEL FILE ACTIONS -------------------- */
+
+function PageFileActions({
+  pageId,
+  label,
+  disabled: externalDisabled,
+}: {
+  pageId: string;
+  label?: string;
+  disabled?: boolean;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [isViewing, setIsViewing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [hasFile, setHasFile] = useState(false);
+
+  const { toast } = useToast();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  //  UPLOAD
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("data_type", "dfur_projects");
+
+      const response = await fetch(
+        `${API_BASE_URL}/upload-validation-docs/${pageId}`,
+        { method: "POST", body: formData },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "Upload failed");
+      }
+
+      setHasFile(true);
+
+      toast({
+        title: "File Uploaded",
+        description: `"${file.name}" has been attached.`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description:
+          error.message || "Could not upload file. Please try again.",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  //  VIEW
+  const handleView = async () => {
+    setIsViewing(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/get-validation-docs/${pageId}/dfur_projects`,
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "No file found");
+      }
+
+      const data = await response.json();
+      const url: string = data.file_url;
+
+      if (!url) throw new Error("No file URL returned");
+
+      setFileUrl(url);
+      setViewerOpen(true);
+      setHasFile(true);
+    } catch (error: any) {
+      setHasFile(false);
+
+      toast({
+        variant: "destructive",
+        title: "No File Found",
+        description: error.message || "No document is attached to this record.",
+      });
+    } finally {
+      setIsViewing(false);
+    }
+  };
+
+  // DELETE (NEW)
+  const handleDelete = async () => {
+    const confirmDelete = confirm(
+      "Are you sure you want to remove this document?",
+    );
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/delete-validation-docs/${pageId}/budget_entries`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || err.error || "Delete failed");
+      }
+
+      setHasFile(false);
+      setFileUrl(null);
+      setViewerOpen(false);
+
+      toast({
+        title: "File Removed",
+        description: "The document has been deleted.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description:
+          error.message || "Could not delete file. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      {/* FILE INPUT */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".xlsx,.xls,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.csv"
+        onChange={handleFileChange}
+        data-testid="file-input-abo-page"
+      />
+
+      {/* UPLOAD */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+        onClick={handleUploadClick}
+        disabled={isUploading || externalDisabled}
+        title="Upload document (PDF, DOCX, Images, Excel)"
+      >
+        {isUploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">
+          {isUploading ? "Uploading…" : "Upload Document"}
+        </span>
+      </Button>
+
+      {/* VIEW */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+        onClick={handleView}
+        disabled={isViewing || externalDisabled}
+        title="View uploaded document"
+      >
+        {isViewing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Eye className="h-4 w-4" />
+        )}
+        <span className="hidden sm:inline">
+          {isViewing ? "Loading…" : "View Document"}
+        </span>
+      </Button>
+
+      {/* DELETE (only show if file exists) */}
+      {hasFile && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+          onClick={handleDelete}
+          disabled={isDeleting || externalDisabled}
+          title="Remove uploaded document"
+        >
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">
+            {isDeleting ? "Removing…" : "Remove"}
+          </span>
+        </Button>
+      )}
+
+      {/* VIEWER MODAL */}
+      <FileViewerModal
+        open={viewerOpen}
+        onClose={() => {
+          setViewerOpen(false);
+          setFileUrl(null);
+        }}
+        fileUrl={fileUrl}
+        entryLabel={label}
+      />
+    </>
   );
 }
 
@@ -393,11 +814,15 @@ function ProjectCard({
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-muted/40 rounded p-2">
           <p className="text-muted-foreground mb-0.5">Approved Cost</p>
-          <p className="font-semibold">{formatCurrency(project.total_cost_approved)}</p>
+          <p className="font-semibold">
+            {formatCurrency(project.total_cost_approved)}
+          </p>
         </div>
         <div className="bg-muted/40 rounded p-2">
           <p className="text-muted-foreground mb-0.5">Incurred Cost</p>
-          <p className="font-semibold">{formatCurrency(project.total_cost_incurred)}</p>
+          <p className="font-semibold">
+            {formatCurrency(project.total_cost_incurred)}
+          </p>
         </div>
       </div>
 
@@ -447,7 +872,9 @@ function ProjectCard({
 
 export default function DFUR() {
   const [open, setOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<DfurProject | null>(null);
+  const [editingProject, setEditingProject] = useState<DfurProject | null>(
+    null,
+  );
   const [deleteProject, setDeleteProject] = useState<DfurProject | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -477,12 +904,12 @@ export default function DFUR() {
   });
 
   const projects: DfurProject[] = projectsResponse?.data || [];
-
+  const projectsPageId = projects[0]?.id ?? "";
   // Pagination derived values
   const totalPages = Math.ceil(projects.length / ROWS_PER_PAGE);
   const paginatedProjects = projects.slice(
     (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE
+    currentPage * ROWS_PER_PAGE,
   );
 
   // Reset to page 1 when projects change
@@ -498,7 +925,9 @@ export default function DFUR() {
       if (!response.ok) {
         const year = new Date().getFullYear();
         const count = projects.length + 1;
-        return { transaction_id: `DFUR-${year}-${String(count).padStart(3, "0")}` };
+        return {
+          transaction_id: `DFUR-${year}-${String(count).padStart(3, "0")}`,
+        };
       }
       return response.json();
     },
@@ -524,8 +953,12 @@ export default function DFUR() {
   });
 
   const dfurTotals = {
-    overallApproved: parseFloat(dfurTotalsResponse?.overall_cost_approved || "0"),
-    overallIncurred: parseFloat(dfurTotalsResponse?.overall_cost_incurred || "0"),
+    overallApproved: parseFloat(
+      dfurTotalsResponse?.overall_cost_approved || "0",
+    ),
+    overallIncurred: parseFloat(
+      dfurTotalsResponse?.overall_cost_incurred || "0",
+    ),
     totalActive: dfurTotalsResponse?.total_active || 0,
     totalProjects: dfurTotalsResponse?.total_data || 0,
     totalPending: dfurTotalsResponse?.total_pending || 0,
@@ -560,13 +993,22 @@ export default function DFUR() {
     if (editingProject) {
       form.reset({
         transaction_id: editingProject.transaction_id,
-        transaction_date: format(new Date(editingProject.transaction_date), "yyyy-MM-dd"),
+        transaction_date: format(
+          new Date(editingProject.transaction_date),
+          "yyyy-MM-dd",
+        ),
         name_of_collection: editingProject.name_of_collection,
         project: editingProject.project,
         location: editingProject.location,
         total_cost_approved: parseFloat(editingProject.total_cost_approved),
-        date_started: format(new Date(editingProject.date_started), "yyyy-MM-dd"),
-        target_completion_date: format(new Date(editingProject.target_completion_date), "yyyy-MM-dd"),
+        date_started: format(
+          new Date(editingProject.date_started),
+          "yyyy-MM-dd",
+        ),
+        target_completion_date: format(
+          new Date(editingProject.target_completion_date),
+          "yyyy-MM-dd",
+        ),
         status: editingProject.status,
         total_cost_incurred: parseFloat(editingProject.total_cost_incurred),
         no_extensions: editingProject.no_extensions,
@@ -616,7 +1058,8 @@ export default function DFUR() {
       toast({
         variant: "destructive",
         title: "Error Adding Project",
-        description: error.message || "Failed to add DFUR project. Please try again.",
+        description:
+          error.message || "Failed to add DFUR project. Please try again.",
       });
     },
   });
@@ -645,7 +1088,8 @@ export default function DFUR() {
       toast({
         variant: "destructive",
         title: "Error Updating Project",
-        description: error.message || "Failed to update project. Please try again.",
+        description:
+          error.message || "Failed to update project. Please try again.",
       });
     },
   });
@@ -672,7 +1116,8 @@ export default function DFUR() {
       toast({
         variant: "destructive",
         title: "Error Deleting Project",
-        description: error.message || "Failed to delete project. Please try again.",
+        description:
+          error.message || "Failed to delete project. Please try again.",
       });
     },
   });
@@ -707,13 +1152,14 @@ export default function DFUR() {
   return (
     <EncoderLayout>
       <div className="p-4 md:p-8 space-y-4 md:space-y-6">
-
         {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-col md:flex-row">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground font-poppins leading-tight">
               Development Fund Utilization Report
-              <span className="block md:inline md:ml-2 text-lg md:text-3xl">(DFUR)</span>
+              <span className="block md:inline md:ml-2 text-lg md:text-3xl">
+                (DFUR)
+              </span>
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Track and manage development fund projects
@@ -722,33 +1168,62 @@ export default function DFUR() {
 
           {/* Header action buttons */}
           <div className="flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setUploadDialogOpen(true)}
-              data-testid="button-upload-excel"
-            >
-              <FileSpreadsheet className="h-4 w-4 text-green-600" />
-              <span className="hidden sm:inline">Upload Excel</span>
-              <span className="sm:hidden">Upload</span>
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {/*  DATA ACTIONS */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 hidden sm:inline">
+                  Data
+                </span>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleExport}
-              data-testid="button-export-excel"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export Excel</span>
-              <span className="sm:hidden">Export</span>
-            </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setUploadDialogOpen(true)}
+                  title="Upload Excel file (.xlsx, .csv)"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                  <span className="hidden sm:inline">Upload Excel</span>
+                  <span className="sm:hidden">Upload</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleExport}
+                  title="Export data to Excel"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export Excel</span>
+                  <span className="sm:hidden">Export</span>
+                </Button>
+              </div>
+
+              {/* divider */}
+              <div className="hidden sm:block h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
+              {/* 📄 DOCUMENT ACTIONS */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 hidden sm:inline">
+                  Document
+                </span>
+
+                <PageFileActions
+                  pageId={projectsPageId}
+                  label="Project Document"
+                  disabled={isLoading || projects.length === 0}
+                />
+              </div>
+            </div>
 
             <Dialog open={open} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
-                <Button className="gap-2" size="sm" data-testid="button-add-dfur">
+                <Button
+                  className="gap-2"
+                  size="sm"
+                  data-testid="button-add-dfur"
+                >
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Add DFUR Project</span>
                   <span className="sm:hidden">Add</span>
@@ -763,8 +1238,10 @@ export default function DFUR() {
                 </DialogHeader>
 
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-
+                  <form
+                    onSubmit={form.handleSubmit(handleSubmit)}
+                    className="space-y-4"
+                  >
                     {/* Transaction ID + Date */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
@@ -774,7 +1251,12 @@ export default function DFUR() {
                           <FormItem>
                             <FormLabel>Transaction ID</FormLabel>
                             <FormControl>
-                              <Input {...field} readOnly className="bg-muted" data-testid="input-transaction-id" />
+                              <Input
+                                {...field}
+                                readOnly
+                                className="bg-muted"
+                                data-testid="input-transaction-id"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -787,7 +1269,11 @@ export default function DFUR() {
                           <FormItem>
                             <FormLabel>Transaction Date</FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} data-testid="input-transaction-date" />
+                              <Input
+                                type="date"
+                                {...field}
+                                data-testid="input-transaction-date"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -800,8 +1286,14 @@ export default function DFUR() {
                       name="name_of_collection"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nature of Collection - ECONOMIC SERVICES</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} required>
+                          <FormLabel>
+                            Nature of Collection - ECONOMIC SERVICES
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            required
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-nature-of-collection">
                                 <SelectValue placeholder="Select category" />
@@ -809,7 +1301,9 @@ export default function DFUR() {
                             </FormControl>
                             <SelectContent>
                               {natureOfCollectionOptions.map((option) => (
-                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -825,7 +1319,12 @@ export default function DFUR() {
                         <FormItem>
                           <FormLabel>Project</FormLabel>
                           <FormControl>
-                            <Input placeholder="Project name" {...field} data-testid="input-project" required/>
+                            <Input
+                              placeholder="Project name"
+                              {...field}
+                              data-testid="input-project"
+                              required
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -839,7 +1338,12 @@ export default function DFUR() {
                         <FormItem>
                           <FormLabel>Location</FormLabel>
                           <FormControl>
-                            <Input placeholder="Project location" {...field} data-testid="input-location" required />
+                            <Input
+                              placeholder="Project location"
+                              {...field}
+                              data-testid="input-location"
+                              required
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -860,7 +1364,9 @@ export default function DFUR() {
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                onChange={(e) =>
+                                  field.onChange(parseFloat(e.target.value))
+                                }
                                 value={field.value}
                                 data-testid="input-total-cost-approved"
                                 required
@@ -882,7 +1388,9 @@ export default function DFUR() {
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                onChange={(e) =>
+                                  field.onChange(parseFloat(e.target.value))
+                                }
                                 value={field.value}
                                 data-testid="input-total-cost-incurred"
                                 required
@@ -903,7 +1411,11 @@ export default function DFUR() {
                           <FormItem>
                             <FormLabel>Date Started</FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} data-testid="input-date-started" />
+                              <Input
+                                type="date"
+                                {...field}
+                                data-testid="input-date-started"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -916,7 +1428,11 @@ export default function DFUR() {
                           <FormItem>
                             <FormLabel>Target Completion Date</FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} data-testid="input-target-completion" />
+                              <Input
+                                type="date"
+                                {...field}
+                                data-testid="input-target-completion"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -932,7 +1448,10 @@ export default function DFUR() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
                               <FormControl>
                                 <SelectTrigger data-testid="select-status">
                                   <SelectValue placeholder="Select status" />
@@ -940,7 +1459,9 @@ export default function DFUR() {
                               </FormControl>
                               <SelectContent>
                                 {statusOptions.map((option) => (
-                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -961,7 +1482,9 @@ export default function DFUR() {
                                 step="1"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  field.onChange(parseInt(e.target.value) || 0)
+                                }
                                 value={field.value}
                                 data-testid="input-extensions"
                               />
@@ -1004,7 +1527,9 @@ export default function DFUR() {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={createProject.isPending || updateProject.isPending}
+                        disabled={
+                          createProject.isPending || updateProject.isPending
+                        }
                         className="w-full sm:w-auto"
                         data-testid="button-submit"
                       >
@@ -1052,7 +1577,9 @@ export default function DFUR() {
                 className="text-2xl md:text-3xl font-bold text-foreground"
                 data-testid="text-total-approved"
               >
-                {isTotalsLoading ? "—" : formatCurrency(dfurTotals.overallApproved)}
+                {isTotalsLoading
+                  ? "—"
+                  : formatCurrency(dfurTotals.overallApproved)}
               </p>
             </CardContent>
           </Card>
@@ -1077,13 +1604,18 @@ export default function DFUR() {
         {/* Projects List */}
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="font-poppins text-base md:text-lg">DFUR Projects</CardTitle>
+            <CardTitle className="font-poppins text-base md:text-lg">
+              DFUR Projects
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-0 md:p-6 md:pt-0">
             {isLoading ? (
               <div className="space-y-2 px-4 md:px-0 pb-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-muted rounded animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-12 bg-muted rounded animate-pulse"
+                  />
                 ))}
               </div>
             ) : (
@@ -1116,11 +1648,19 @@ export default function DFUR() {
                         <TableHead>Project</TableHead>
                         <TableHead>Nature</TableHead>
                         <TableHead>Location</TableHead>
-                        <TableHead className="text-right">Approved Cost</TableHead>
-                        <TableHead className="text-right">Incurred Cost</TableHead>
+                        <TableHead className="text-right">
+                          Approved Cost
+                        </TableHead>
+                        <TableHead className="text-right">
+                          Incurred Cost
+                        </TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-center">Extensions</TableHead>
-                        <TableHead className="text-center">Is Flagged</TableHead>
+                        <TableHead className="text-center">
+                          Extensions
+                        </TableHead>
+                        <TableHead className="text-center">
+                          Is Flagged
+                        </TableHead>
                         <TableHead className="text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1154,7 +1694,9 @@ export default function DFUR() {
                             <TableCell className="text-sm">
                               {project.name_of_collection}
                             </TableCell>
-                            <TableCell className="text-sm">{project.location}</TableCell>
+                            <TableCell className="text-sm">
+                              {project.location}
+                            </TableCell>
                             <TableCell className="text-right font-semibold">
                               {formatCurrency(project.total_cost_approved)}
                             </TableCell>
@@ -1175,11 +1717,13 @@ export default function DFUR() {
                             <TableCell className="text-center">
                               {project.is_flagged === true ? (
                                 <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                  <Flag className="h-4 w-4 text-red-500" /> Flagged
+                                  <Flag className="h-4 w-4 text-red-500" />{" "}
+                                  Flagged
                                 </p>
                               ) : (
                                 <p className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                  <Check className="h-4 w-4 text-green-500" /> Not Flagged
+                                  <Check className="h-4 w-4 text-green-500" />{" "}
+                                  Not Flagged
                                 </p>
                               )}
                             </TableCell>
@@ -1190,7 +1734,10 @@ export default function DFUR() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() =>
-                                    openFlagDialog(project.id, project.transaction_id)
+                                    openFlagDialog(
+                                      project.id,
+                                      project.transaction_id,
+                                    )
                                   }
                                   data-testid={`button-view-flags-${project.id}`}
                                   title="View flag comments"
@@ -1252,8 +1799,8 @@ export default function DFUR() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete DFUR Project?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete project "{deleteProject?.project}"? This
-                action cannot be undone.
+                Are you sure you want to delete project "
+                {deleteProject?.project}"? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
@@ -1265,7 +1812,8 @@ export default function DFUR() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() =>
-                  deleteProject && deleteProjectMutation.mutate(deleteProject.id)
+                  deleteProject &&
+                  deleteProjectMutation.mutate(deleteProject.id)
                 }
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                 data-testid="button-confirm-delete"
